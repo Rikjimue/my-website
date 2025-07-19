@@ -2,16 +2,26 @@
 
 import Link from "next/link"
 import { Terminal, Shield, Code, FileText, Mail, Github, Linkedin, Twitter, Folder, ExternalLink, Menu, X } from "lucide-react"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 
-// Enhanced decoding text animation with glitch effects
-function DecodingText({ children: text, className = "", delay = 0 }: { children: string; className?: string; delay?: number }) {
-  const [displayChars, setDisplayChars] = useState<string[]>(Array(text.length).fill(""))
+// Enhanced word-based decoding text animation with proper wrapping
+function DecodingText({ 
+  children: text, 
+  className = "", 
+  delay = 0, 
+  onComplete 
+}: { 
+  children: string; 
+  className?: string; 
+  delay?: number;
+  onComplete?: () => void;
+}) {
+  const [displayWords, setDisplayWords] = useState<Array<{ word: string; chars: string[]; resolved: boolean }>>([])
   const [isGlitching, setIsGlitching] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
   const animationFrameId = useRef<number | null>(null)
   const startTimeRef = useRef<number | null>(null)
-  const charResolveTimes = useRef<number[]>([])
-  const currentScrambledChars = useRef<string[]>(Array(text.length).fill(""))
+  const wordResolveTimes = useRef<number[]>([])
 
   const ANIMATION_DURATION_MS = 1500
   const GLITCH_CHANCE = 0.02
@@ -25,16 +35,27 @@ function DecodingText({ children: text, className = "", delay = 0 }: { children:
   }
 
   useEffect(() => {
+    // Split text into words while preserving spaces
+    const words = text.split(/(\s+)/)
+    
+    // Initialize word structures
+    const initialWords = words.map(word => ({
+      word,
+      chars: word.split('').map(() => getRandomChar()),
+      resolved: false
+    }))
+    
+    setDisplayWords(initialWords)
+
     const timer = setTimeout(() => {
-      charResolveTimes.current = text.split("").map((_, i) => {
-        const baseTime = (i / text.length) * ANIMATION_DURATION_MS * 0.7
-        const randomVariation = Math.random() * ANIMATION_DURATION_MS * 0.5
+      setIsVisible(true)
+      
+      // Set random resolve times for each word
+      wordResolveTimes.current = words.map((_, i) => {
+        const baseTime = (i / words.length) * ANIMATION_DURATION_MS * 0.8
+        const randomVariation = Math.random() * ANIMATION_DURATION_MS * 0.4
         return baseTime + randomVariation
       })
-
-      currentScrambledChars.current = Array(text.length)
-        .fill("")
-        .map(() => getRandomChar())
 
       startTimeRef.current = performance.now()
       let frameCount = 0
@@ -43,11 +64,19 @@ function DecodingText({ children: text, className = "", delay = 0 }: { children:
         const elapsed = performance.now() - (startTimeRef.current || 0)
 
         if (elapsed >= ANIMATION_DURATION_MS) {
-          setDisplayChars(text.split(""))
+          // Animation finished - show final text
+          setDisplayWords(words.map(word => ({
+            word,
+            chars: word.split(''),
+            resolved: true
+          })))
           setIsGlitching(false)
           if (animationFrameId.current) {
             cancelAnimationFrame(animationFrameId.current)
           }
+          setTimeout(() => {
+            onComplete?.()
+          }, 100)
           return
         }
 
@@ -58,20 +87,30 @@ function DecodingText({ children: text, className = "", delay = 0 }: { children:
           setTimeout(() => setIsGlitching(false), 100)
         }
 
-        setDisplayChars(() => {
-          const newChars = Array(text.length).fill("")
-          for (let i = 0; i < text.length; i++) {
-            if (elapsed >= charResolveTimes.current[i]) {
-              newChars[i] = text[i]
-            } else {
-              if (frameCount % 2 === 0) {
-                currentScrambledChars.current[i] = getRandomChar()
+        setDisplayWords(prevWords => 
+          prevWords.map((wordObj, wordIndex) => {
+            if (elapsed >= wordResolveTimes.current[wordIndex]) {
+              // Word is resolved
+              return {
+                ...wordObj,
+                chars: wordObj.word.split(''),
+                resolved: true
               }
-              newChars[i] = currentScrambledChars.current[i]
+            } else {
+              // Word is still scrambling
+              if (frameCount % 2 === 0) {
+                return {
+                  ...wordObj,
+                  chars: wordObj.word.split('').map(char => 
+                    char === ' ' ? ' ' : getRandomChar()
+                  ),
+                  resolved: false
+                }
+              }
+              return wordObj
             }
-          }
-          return newChars
-        })
+          })
+        )
 
         animationFrameId.current = requestAnimationFrame(animate)
       }
@@ -85,26 +124,65 @@ function DecodingText({ children: text, className = "", delay = 0 }: { children:
         cancelAnimationFrame(animationFrameId.current)
       }
     }
-  }, [text, delay])
+  }, [text, delay, onComplete])
 
   return (
     <span 
-      className={`${className} ${isGlitching ? 'animate-pulse text-red-400' : ''} transition-colors duration-100`}
+      className={`${className} ${isGlitching ? 'animate-pulse text-red-400' : ''} transition-all duration-300 ${
+        isVisible ? 'opacity-100' : 'opacity-0'
+      }`}
+      style={{ 
+        wordBreak: 'break-word', 
+        overflowWrap: 'anywhere',
+        lineHeight: '1.5'
+      }}
     >
-      {displayChars.map((char, index) => (
+      {displayWords.map((wordObj, wordIndex) => (
         <span 
-          key={index} 
-          className="inline-block"
-          style={{ 
-            minWidth: char === ' ' ? '0.3em' : '0.6em', 
-            textAlign: 'center',
-            textShadow: isGlitching ? '2px 0 #ff0000, -2px 0 #00ffff' : 'none'
+          key={wordIndex}
+          className="inline"
+          style={{
+            textShadow: isGlitching && !wordObj.resolved ? '2px 0 #ff0000, -2px 0 #00ffff' : 'none'
           }}
         >
-          {char || '\u00A0'}
+          {wordObj.chars.join('')}
         </span>
       ))}
     </span>
+  )
+}
+
+// Animation coordinator component
+function AnimatedSection({ 
+  children, 
+  delay = 0, 
+  className = "",
+  isVisible = false 
+}: { 
+  children: React.ReactNode; 
+  delay?: number; 
+  className?: string;
+  isVisible?: boolean;
+}) {
+  const [shouldShow, setShouldShow] = useState(false)
+
+  useEffect(() => {
+    if (isVisible) {
+      const timer = setTimeout(() => {
+        setShouldShow(true)
+      }, delay)
+      return () => clearTimeout(timer)
+    }
+  }, [isVisible, delay])
+
+  return (
+    <div 
+      className={`transition-all duration-700 ease-out ${
+        shouldShow ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+      } ${className}`}
+    >
+      {children}
+    </div>
   )
 }
 
@@ -145,6 +223,20 @@ const projects = [
 
 export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [heroAnimationComplete, setHeroAnimationComplete] = useState(false)
+  const [completedAnimations, setCompletedAnimations] = useState(0)
+  
+  // Track when all hero animations are complete
+  const handleAnimationComplete = useCallback(() => {
+    setCompletedAnimations(prev => {
+      const newCount = prev + 1
+      // When we have completed the main hero animations (adjust this number based on your needs)
+      if (newCount >= 6) { // Adjust based on number of main DecodingText elements in hero
+        setTimeout(() => setHeroAnimationComplete(true), 500)
+      }
+      return newCount
+    })
+  }, [])
 
   return (
     <div className="min-h-screen bg-black text-white font-mono relative overflow-x-hidden">
@@ -213,41 +305,68 @@ export default function HomePage() {
         <section className="py-8 sm:py-12">
           <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 items-center">
             <div className="space-y-4 sm:space-y-6 order-2 lg:order-1 min-w-0">
-              <div className="text-sm text-purple-300">
-                <span className="text-white">╭─</span> <DecodingText delay={100}>whoami</DecodingText>
-              </div>
-              <div className="space-y-2 min-w-0">
-                <DecodingText className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white break-words" delay={300}>Luke Johnson</DecodingText>
+              <AnimatedSection isVisible={true} className="text-sm text-purple-300">
+                <span className="text-white">╭─</span> <DecodingText delay={100} onComplete={handleAnimationComplete}>whoami</DecodingText>
+              </AnimatedSection>
+              
+              <AnimatedSection isVisible={true} className="space-y-2 min-w-0">
+                <DecodingText 
+                  className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white break-words" 
+                  delay={300}
+                  onComplete={handleAnimationComplete}
+                >
+                  Luke Johnson
+                </DecodingText>
                 <div className="text-lg sm:text-xl text-purple-300 space-y-1 min-w-0">
-                  <div className="flex gap-2 items-center">
+                  <AnimatedSection isVisible={true} delay={800} className="flex gap-2 items-center">
                     <span className="text-purple-400 flex-shrink-0">◈</span>
-                    <div className="break-words min-w-0"><DecodingText delay={800}>Cybersecurity Student</DecodingText></div>
-                  </div>
-                  <div className="flex gap-2 items-center">
+                    <div className="break-words min-w-0">
+                      <DecodingText delay={800} onComplete={handleAnimationComplete}>Cybersecurity Student</DecodingText>
+                    </div>
+                  </AnimatedSection>
+                  <AnimatedSection isVisible={true} delay={1000} className="flex gap-2 items-center">
                     <span className="text-purple-400 flex-shrink-0">◈</span>
-                    <div className="break-words min-w-0"><DecodingText delay={1000}>CTF Competitor</DecodingText></div>
-                  </div>
-                  <div className="flex gap-2 items-center">
+                    <div className="break-words min-w-0">
+                      <DecodingText delay={1000} onComplete={handleAnimationComplete}>CTF Competitor</DecodingText>
+                    </div>
+                  </AnimatedSection>
+                  <AnimatedSection isVisible={true} delay={1200} className="flex gap-2 items-center">
                     <span className="text-purple-400 flex-shrink-0">◈</span>
-                    <div className="break-words min-w-0"><DecodingText delay={1200}>Aspiring Security Researcher</DecodingText></div>
+                    <div className="break-words min-w-0">
+                      <DecodingText delay={1200} onComplete={handleAnimationComplete}>Aspiring Security Researcher</DecodingText>
+                    </div>
+                  </AnimatedSection>
+                </div>
+              </AnimatedSection>
+              
+              <AnimatedSection isVisible={true} delay={1400} className="space-y-3 text-sm sm:text-base text-gray-300 border-l-2 border-purple-600 pl-4">
+                <div className="flex gap-2 leading-relaxed">
+                  <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                  <div className="flex-1 min-w-0">
+                    <DecodingText delay={1400} onComplete={handleAnimationComplete}>
+                      Studying cybersecurity at Purdue while working as a security intern
+                    </DecodingText>
                   </div>
                 </div>
-              </div>
-              <div className="space-y-3 text-sm sm:text-base text-gray-300 border-l-2 border-purple-600 pl-4 min-w-0 max-w-full">
                 <div className="flex gap-2 leading-relaxed">
-                  <span className="text-purple-400 flex-shrink-0">▸</span>
-                  <span className="break-words overflow-wrap-anywhere"><DecodingText delay={1400}>Studying cybersecurity at Purdue while working as a security intern</DecodingText></span>
+                  <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                  <div className="flex-1 min-w-0">
+                    <DecodingText delay={1600}>
+                      Competing in CTF challenges and building personal security projects
+                    </DecodingText>
+                  </div>
                 </div>
                 <div className="flex gap-2 leading-relaxed">
-                  <span className="text-purple-400 flex-shrink-0">▸</span>
-                  <span className="break-words overflow-wrap-anywhere"><DecodingText delay={1600}>Competing in CTF challenges and building personal security projects</DecodingText></span>
+                  <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                  <div className="flex-1 min-w-0">
+                    <DecodingText delay={1800}>
+                      Studying reverse engineering and exploitation outside of class through pwn.college
+                    </DecodingText>
+                  </div>
                 </div>
-                <div className="flex gap-2 leading-relaxed">
-                  <span className="text-purple-400 flex-shrink-0">▸</span>
-                  <span className="break-words overflow-wrap-anywhere"><DecodingText delay={1800}>Studying reverse engineering and exploitation outside of class through pwn.college</DecodingText></span>
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-4 sm:gap-6 pt-4 sm:pt-6">
+              </AnimatedSection>
+              
+              <AnimatedSection isVisible={true} delay={2000} className="flex flex-wrap gap-4 sm:gap-6 pt-4 sm:pt-6">
                 <a
                   target="_blank"
                   rel="noopener noreferrer"
@@ -273,11 +392,15 @@ export default function HomePage() {
                   <Twitter className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
                   <DecodingText delay={2400}>twitter</DecodingText>
                 </a>
-              </div>
+              </AnimatedSection>
             </div>
 
             {/* ASCII Art Section - Mobile Responsive */}
-            <div className="border border-purple-500/30 backdrop-blur-sm bg-black/70 rounded-lg order-1 lg:order-2 max-w-full overflow-hidden fade-in-delayed fade-in-2">
+            <AnimatedSection 
+              isVisible={true} 
+              delay={500}
+              className="border border-purple-500/30 backdrop-blur-sm bg-black/70 rounded-lg order-1 lg:order-2 max-w-full overflow-hidden"
+            >
               <div className="p-3 sm:p-6 flex flex-col items-center justify-center min-w-0 max-w-full">
                 <div className="text-purple-400 whitespace-pre leading-none w-full flex justify-center overflow-hidden min-w-0" style={{
                   fontFamily: '"SF Mono", "Monaco", "Inconsolata", "Roboto Mono", "Source Code Pro", monospace',
@@ -296,254 +419,266 @@ export default function HomePage() {
                 <div className="text-xs text-purple-300/70 mt-2 sm:mt-4 px-2 max-w-full w-full flex justify-center">
                   <div className="flex gap-2 leading-relaxed text-center">
                     <span className="text-purple-400 flex-shrink-0">▸</span>
-                    <span className="break-words" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'normal' }}>
-                      <DecodingText delay={3000}>"The good news about computers is that they do what you tell them to do. The bad news is that they do what you tell them to do." - Ted Nelson</DecodingText>
+                    <span className="break-words min-w-0" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
+                      <DecodingText delay={1400}>
+                        "The good news about computers is that they do what you tell them to do. The bad news is that they do what you tell them to do." - Ted Nelson
+                      </DecodingText>
                     </span>
                   </div>
                 </div>
               </div>
-            </div>
+            </AnimatedSection>
           </div>
         </section>
 
         {/* About Section */}
-        <section id="about" className="border border-purple-500/30 p-4 sm:p-6 backdrop-blur-sm bg-black/50 rounded-lg fade-in-delayed fade-in-3">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 text-white">
-              <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-              <h2 className="text-xl sm:text-2xl font-bold">about.md</h2>
-              <div className="flex-1 border-b border-purple-500/30"></div>
+        <AnimatedSection isVisible={heroAnimationComplete} delay={200}>
+          <section id="about" className="border border-purple-500/30 p-4 sm:p-6 backdrop-blur-sm bg-black/50 rounded-lg">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 text-white">
+                <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+                <h2 className="text-xl sm:text-2xl font-bold">about.md</h2>
+                <div className="flex-1 border-b border-purple-500/30"></div>
+              </div>
+              <div className="space-y-4 text-sm sm:text-base text-gray-300">
+                <div className="flex gap-2 leading-relaxed">
+                  <span className="text-purple-400 flex-shrink-0 mt-0.5">┌─</span>
+                  <span className="break-words min-w-0 flex-1">I'm a cybersecurity student at Purdue University, currently working as an IT Security Intern at ConnectOne Bank. I spend most of my time learning how systems break and how to defend against those weaknesses.</span>
+                </div>
+                <div className="flex gap-2 leading-relaxed">
+                  <span className="text-purple-400 flex-shrink-0 mt-0.5">├─</span>
+                  <span className="break-words min-w-0 flex-1">My main interests are in malware analysis and reverse engineering. I've built a few personal projects including a databreach monitoring platform and an isolated malware analysis environment on a Raspberry Pi.</span>
+                </div>
+                <div className="flex gap-2 leading-relaxed">
+                  <span className="text-purple-400 flex-shrink-0 mt-0.5">└─</span>
+                  <span className="break-words min-w-0 flex-1">Outside of coursework, I compete with Purdue's CTF team (b01lers) and work on automating security processes with Python. I'm always looking for new ways to understand how attackers operate and improve defensive strategies.</span>
+                </div>
+              </div>
             </div>
-            <div className="space-y-4 text-sm sm:text-base text-gray-300">
-              <div className="flex gap-2 leading-relaxed">
-                <span className="text-purple-400 flex-shrink-0">┌─</span>
-                <span className="break-words">I'm a cybersecurity student at Purdue University, currently working as an IT Security Intern at ConnectOne Bank. I spend most of my time learning how systems break and how to defend against those weaknesses.</span>
-              </div>
-              <div className="flex gap-2 leading-relaxed">
-                <span className="text-purple-400 flex-shrink-0">├─</span>
-                <span className="break-words">My main interests are in malware analysis and reverse engineering. I've built a few personal projects including a databreach monitoring platform and an isolated malware analysis environment on a Raspberry Pi.</span>
-              </div>
-              <div className="flex gap-2 leading-relaxed">
-                <span className="text-purple-400 flex-shrink-0">└─</span>
-                <span className="break-words">Outside of coursework, I compete with Purdue's CTF team (b01lers) and work on automating security processes with Python. I'm always looking for new ways to understand how attackers operate and improve defensive strategies.</span>
-              </div>
-            </div>
-          </div>
-        </section>
+          </section>
+        </AnimatedSection>
 
         {/* Skills Section */}
-        <section id="skills" className="border border-purple-500/30 p-4 sm:p-6 backdrop-blur-sm bg-black/50 rounded-lg fade-in-delayed fade-in-4">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 text-white">
-              <Code className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-              <h2 className="text-xl sm:text-2xl font-bold">skills.json</h2>
-              <div className="flex-1 border-b border-purple-500/30"></div>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-6 sm:gap-8">
-              <div className="space-y-3">
-                <h3 className="text-base sm:text-lg font-semibold text-purple-300">◆ Current Arsenal</h3>
-                <ul className="space-y-2 text-sm sm:text-base text-gray-300">
-                  <li className="flex gap-2 leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0">▸</span>
-                    <span className="break-words">Python, Java, C, Bash, SQL, Golang</span>
-                  </li>
-                  <li className="flex gap-2 leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0">▸</span>
-                    <span className="break-words">Wireshark, Splunk, Arctic Wolf, Burp Suite</span>
-                  </li>
-                  <li className="flex gap-2 leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0">▸</span>
-                    <span className="break-words">Linux Environments (Kali, Ubuntu, Proxmox)</span>
-                  </li>
-                  <li className="flex gap-2 leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0">▸</span>
-                    <span className="break-words">CTF Competitions & Binary Challenges</span>
-                  </li>
-                  <li className="flex gap-2 leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0">▸</span>
-                    <span className="break-words">Dark Web Reconnaissance & OSINT</span>
-                  </li>
-                </ul>
+        <AnimatedSection isVisible={heroAnimationComplete} delay={400}>
+          <section id="skills" className="border border-purple-500/30 p-4 sm:p-6 backdrop-blur-sm bg-black/50 rounded-lg">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 text-white">
+                <Code className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+                <h2 className="text-xl sm:text-2xl font-bold">skills.json</h2>
+                <div className="flex-1 border-b border-purple-500/30"></div>
               </div>
-              <div className="space-y-3">
-                <h3 className="text-base sm:text-lg font-semibold text-purple-300">◆ Currently Exploring</h3>
-                <ul className="space-y-2 text-sm sm:text-base text-gray-300">
-                  <li className="flex gap-2 leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0">▸</span>
-                    <span className="break-words">x86 Assembly & Reverse Engineering</span>
-                  </li>
-                  <li className="flex gap-2 leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0">▸</span>
-                    <span className="break-words">Ghidra, gdb, Advanced Debugging</span>
-                  </li>
-                  <li className="flex gap-2 leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0">▸</span>
-                    <span className="break-words">Malware Analysis & Behavioral Patterns</span>
-                  </li>
-                  <li className="flex gap-2 leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0">▸</span>
-                    <span className="break-words">Exploit Development Techniques</span>
-                  </li>
-                  <li className="flex gap-2 leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0">▸</span>
-                    <span className="break-words">Threat Intelligence & Attribution</span>
-                  </li>
-                  <li className="flex gap-2 leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0">▸</span>
-                    <span className="break-words">Red Team Methodologies</span>
-                  </li>
-                </ul>
+              <div className="grid sm:grid-cols-2 gap-6 sm:gap-8">
+                <div className="space-y-3">
+                  <h3 className="text-base sm:text-lg font-semibold text-purple-300">◆ Current Arsenal</h3>
+                  <ul className="space-y-2 text-sm sm:text-base text-gray-300">
+                    <li className="flex gap-2 leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                      <span className="break-words min-w-0">Python, Java, C, Bash, SQL, Golang</span>
+                    </li>
+                    <li className="flex gap-2 leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                      <span className="break-words min-w-0">Wireshark, Splunk, Arctic Wolf, Burp Suite</span>
+                    </li>
+                    <li className="flex gap-2 leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                      <span className="break-words min-w-0">Linux Environments (Kali, Ubuntu, Proxmox)</span>
+                    </li>
+                    <li className="flex gap-2 leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                      <span className="break-words min-w-0">CTF Competitions & Binary Challenges</span>
+                    </li>
+                    <li className="flex gap-2 leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                      <span className="break-words min-w-0">Dark Web Reconnaissance & OSINT</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="space-y-3">
+                  <h3 className="text-base sm:text-lg font-semibold text-purple-300">◆ Currently Exploring</h3>
+                  <ul className="space-y-2 text-sm sm:text-base text-gray-300">
+                    <li className="flex gap-2 leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                      <span className="break-words min-w-0">x86 Assembly & Reverse Engineering</span>
+                    </li>
+                    <li className="flex gap-2 leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                      <span className="break-words min-w-0">Ghidra, gdb, Advanced Debugging</span>
+                    </li>
+                    <li className="flex gap-2 leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                      <span className="break-words min-w-0">Malware Analysis & Behavioral Patterns</span>
+                    </li>
+                    <li className="flex gap-2 leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                      <span className="break-words min-w-0">Exploit Development Techniques</span>
+                    </li>
+                    <li className="flex gap-2 leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                      <span className="break-words min-w-0">Threat Intelligence & Attribution</span>
+                    </li>
+                    <li className="flex gap-2 leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                      <span className="break-words min-w-0">Red Team Methodologies</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </AnimatedSection>
 
         {/* Projects Section */}
-        <section id="projects" className="border border-purple-500/30 p-4 sm:p-6 backdrop-blur-sm bg-black/50 rounded-lg fade-in-delayed fade-in-5">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 text-white">
-              <Folder className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-              <h2 className="text-xl sm:text-2xl font-bold">projects/</h2>
-              <div className="flex-1 border-b border-purple-500/30"></div>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
-              {projects.map((project) => (
-                <div
-                  key={project.id}
-                  className="border border-purple-600/50 p-4 transition-all group rounded-lg hover:bg-purple-950/20 hover:border-purple-400/70 hover:shadow-lg hover:shadow-purple-500/20"
-                >
-                  <div className="space-y-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <h3 className="text-base sm:text-lg font-semibold text-white group-hover:text-purple-300 transition-colors">
-                        {project.name}
-                      </h3>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <span
-                          className={`text-xs px-2 py-1 rounded ${
-                            project.status === "Completed"
-                              ? "bg-green-600/20 text-green-400 border border-green-600/50"
-                              : "bg-orange-600/20 text-orange-400 border border-orange-600/50"
-                          }`}
-                        >
-                          {project.status}
-                        </span>
-                        <a
-                          href={project.github}
-                          className="text-purple-300 hover:text-white transition-colors"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <ExternalLink className="w-4 h-4" />
-                        </a>
+        <AnimatedSection isVisible={heroAnimationComplete} delay={600}>
+          <section id="projects" className="border border-purple-500/30 p-4 sm:p-6 backdrop-blur-sm bg-black/50 rounded-lg">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 text-white">
+                <Folder className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+                <h2 className="text-xl sm:text-2xl font-bold">projects/</h2>
+                <div className="flex-1 border-b border-purple-500/30"></div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
+                {projects.map((project) => (
+                  <div
+                    key={project.id}
+                    className="border border-purple-600/50 p-4 transition-all group rounded-lg hover:bg-purple-950/20 hover:border-purple-400/70 hover:shadow-lg hover:shadow-purple-500/20"
+                  >
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="text-base sm:text-lg font-semibold text-white group-hover:text-purple-300 transition-colors">
+                          {project.name}
+                        </h3>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <span
+                            className={`text-xs px-2 py-1 rounded ${
+                              project.status === "Completed"
+                                ? "bg-green-600/20 text-green-400 border border-green-600/50"
+                                : "bg-orange-600/20 text-orange-400 border border-orange-600/50"
+                            }`}
+                          >
+                            {project.status}
+                          </span>
+                          <a
+                            href={project.github}
+                            className="text-purple-300 hover:text-white transition-colors"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
+                        <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                        <span className="break-words min-w-0">{project.description}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {project.tech.map((tech) => (
+                          <span key={tech} className="text-xs px-2 py-1 border border-purple-600/50 text-purple-300 rounded">
+                            {tech}
+                          </span>
+                        ))}
                       </div>
                     </div>
-                    <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
-                      <span className="text-purple-400 flex-shrink-0">▸</span>
-                      <span className="break-words">{project.description}</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {project.tech.map((tech) => (
-                        <span key={tech} className="text-xs px-2 py-1 border border-purple-600/50 text-purple-300 rounded">
-                          {tech}
-                        </span>
-                      ))}
-                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </AnimatedSection>
 
         {/* Blog Section */}
-        <section id="blog" className="border border-purple-500/30 p-4 sm:p-6 backdrop-blur-sm bg-black/50 rounded-lg fade-in-delayed fade-in-6">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 text-white">
-              <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-              <h2 className="text-xl sm:text-2xl font-bold">recent_posts.log</h2>
-              <div className="flex-1 border-b border-purple-500/30"></div>
-            </div>
+        <AnimatedSection isVisible={heroAnimationComplete} delay={800}>
+          <section id="blog" className="border border-purple-500/30 p-4 sm:p-6 backdrop-blur-sm bg-black/50 rounded-lg">
             <div className="space-y-4">
-              <article className="border-l-2 border-purple-600 pl-4 space-y-2 p-2 transition-all rounded cursor-pointer hover:bg-purple-950/10">
-                <div className="text-sm text-purple-300">2024-01-15</div>
-                <h3 className="text-base sm:text-lg font-semibold text-white hover:text-purple-300 cursor-pointer">
-                  Advanced SQL Injection in Modern Applications
-                </h3>
-                <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
-                  <span className="text-purple-400 flex-shrink-0">▸</span>
-                  <span className="break-words">Deep dive into bypassing modern WAFs and exploiting blind SQL injection vulnerabilities in contemporary web applications...</span>
-                </div>
-              </article>
+              <div className="flex items-center gap-3 text-white">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+                <h2 className="text-xl sm:text-2xl font-bold">recent_posts.log</h2>
+                <div className="flex-1 border-b border-purple-500/30"></div>
+              </div>
+              <div className="space-y-4">
+                <article className="border-l-2 border-purple-600 pl-4 space-y-2 p-2 transition-all rounded cursor-pointer hover:bg-purple-950/10">
+                  <div className="text-sm text-purple-300">2024-01-15</div>
+                  <h3 className="text-base sm:text-lg font-semibold text-white hover:text-purple-300 cursor-pointer">
+                    Advanced SQL Injection in Modern Applications
+                  </h3>
+                  <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
+                    <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                    <span className="break-words min-w-0">Deep dive into bypassing modern WAFs and exploiting blind SQL injection vulnerabilities in contemporary web applications...</span>
+                  </div>
+                </article>
 
-              <article className="border-l-2 border-purple-600 pl-4 space-y-2 p-2 transition-all rounded cursor-pointer hover:bg-purple-950/10">
-                <div className="text-sm text-purple-300">2024-01-08</div>
-                <h3 className="text-base sm:text-lg font-semibold text-white hover:text-purple-300 cursor-pointer">
-                  Building VulnHunter: A Python Security Scanner
-                </h3>
-                <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
-                  <span className="text-purple-400 flex-shrink-0">▸</span>
-                  <span className="break-words">Complete guide to building an automated vulnerability scanner using Python with async capabilities and custom payload generation...</span>
-                </div>
-              </article>
+                <article className="border-l-2 border-purple-600 pl-4 space-y-2 p-2 transition-all rounded cursor-pointer hover:bg-purple-950/10">
+                  <div className="text-sm text-purple-300">2024-01-08</div>
+                  <h3 className="text-base sm:text-lg font-semibold text-white hover:text-purple-300 cursor-pointer">
+                    Building VulnHunter: A Python Security Scanner
+                  </h3>
+                  <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
+                    <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                    <span className="break-words min-w-0">Complete guide to building an automated vulnerability scanner using Python with async capabilities and custom payload generation...</span>
+                  </div>
+                </article>
 
-              <article className="border-l-2 border-purple-600 pl-4 space-y-2 p-2 transition-all rounded cursor-pointer hover:bg-purple-950/10">
-                <div className="text-sm text-purple-300">2024-01-01</div>
-                <h3 className="text-base sm:text-lg font-semibold text-white hover:text-purple-300 cursor-pointer">
-                  2023 Security Landscape: A Year in Review
-                </h3>
-                <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
-                  <span className="text-purple-400 flex-shrink-0">▸</span>
-                  <span className="break-words">Analysis of major security incidents, emerging threats, and defensive innovations that shaped the cybersecurity landscape...</span>
-                </div>
-              </article>
+                <article className="border-l-2 border-purple-600 pl-4 space-y-2 p-2 transition-all rounded cursor-pointer hover:bg-purple-950/10">
+                  <div className="text-sm text-purple-300">2024-01-01</div>
+                  <h3 className="text-base sm:text-lg font-semibold text-white hover:text-purple-300 cursor-pointer">
+                    2023 Security Landscape: A Year in Review
+                  </h3>
+                  <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
+                    <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                    <span className="break-words min-w-0">Analysis of major security incidents, emerging threats, and defensive innovations that shaped the cybersecurity landscape...</span>
+                  </div>
+                </article>
+              </div>
+              <div className="pt-4">
+                <Link href="/blog" className="text-purple-300 hover:text-white transition-colors flex gap-2 items-start leading-relaxed">
+                  <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                  <span className="break-words min-w-0">view all posts</span>
+                </Link>
+              </div>
             </div>
-            <div className="pt-4">
-              <Link href="/blog" className="text-purple-300 hover:text-white transition-colors flex gap-2 items-start leading-relaxed">
-                <span className="text-purple-400 flex-shrink-0">▸</span>
-                <span className="break-words">view all posts</span>
-              </Link>
-            </div>
-          </div>
-        </section>
+          </section>
+        </AnimatedSection>
 
         {/* Contact Section */}
-        <section id="contact" className="border border-purple-500/30 p-4 sm:p-6 backdrop-blur-sm bg-black/50 rounded-lg">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 text-white">
-              <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-              <h2 className="text-xl sm:text-2xl font-bold">contact.txt</h2>
-              <div className="flex-1 border-b border-purple-500/30"></div>
-            </div>
-            <div className="space-y-4 text-sm sm:text-base text-gray-300">
-              <div className="flex gap-2 leading-relaxed">
-                <span className="text-purple-400 flex-shrink-0">▸</span>
-                <span className="break-words">Want to reach me?</span>
+        <AnimatedSection isVisible={heroAnimationComplete} delay={1000}>
+          <section id="contact" className="border border-purple-500/30 p-4 sm:p-6 backdrop-blur-sm bg-black/50 rounded-lg">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 text-white">
+                <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+                <h2 className="text-xl sm:text-2xl font-bold">contact.txt</h2>
+                <div className="flex-1 border-b border-purple-500/30"></div>
               </div>
-              <div className="grid sm:grid-cols-[2fr_3fr] gap-4">
-                <div className="space-y-2">
-                  <div className="flex gap-2 leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0">◈</span>
-                    <span className="break-words">email: contact@rikjimue.com</span>
+              <div className="space-y-4 text-sm sm:text-base text-gray-300">
+                <div className="flex gap-2 leading-relaxed">
+                  <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                  <span className="break-words min-w-0">Want to reach me?</span>
+                </div>
+                <div className="grid sm:grid-cols-[2fr_3fr] gap-4">
+                  <div className="space-y-2">
+                    <div className="flex gap-2 leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">◈</span>
+                      <span className="break-words min-w-0">email: contact@rikjimue.com</span>
+                    </div>
+                    <div className="flex gap-2 leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">◈</span>
+                      <span className="break-words min-w-0">signal: rikjimue.09</span>
+                    </div>
                   </div>
-                  <div className="flex gap-2 leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0">◈</span>
-                    <span className="break-words">signal: rikjimue.09</span>
+                  <div className="space-y-2">
+                    <div className="flex gap-2 leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">◈</span>
+                      <span className="break-words min-w-0">discord: rikjimue</span>
+                    </div>
+                    <div className="flex gap-2 leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">◈</span>
+                      <span className="break-words min-w-0 break-all">pgp: 0x10C1BC17EA7E3683C07318B09F6467F1CA8829D2</span>
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <div className="flex gap-2 leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0">◈</span>
-                    <span className="break-words">discord: rikjimue</span>
-                  </div>
-                  <div className="flex gap-2 leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0">◈</span>
-                    <span className="break-words break-all">pgp: 0x10C1BC17EA7E3683C07318B09F6467F1CA8829D2</span>
-                  </div>
-                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </AnimatedSection>
       </main>
 
       {/* Footer */}

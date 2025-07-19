@@ -188,35 +188,17 @@ html {
   }
 }
 
-/* Bullet point alignment with proper hanging indent */
-.bullet-flex {
-  display: flex;
-  gap: 0.5rem;
-  line-height: 1.6;
-}
-
-.bullet-flex .bullet-icon {
-  flex-shrink: 0;
-  color: #c084fc;
-  min-width: 1em;
-}
-
-.bullet-flex .bullet-text {
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  min-width: 0;
-}
-
-/* Better word wrapping for all text */
+/* Enhanced word wrapping for all text - CRITICAL FOR FIXING WORD WRAP */
 .break-words {
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  word-break: break-word;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
   hyphens: auto;
 }
 
 .overflow-wrap-anywhere {
-  overflow-wrap: anywhere;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
 }
 
 /* Force word wrapping even in animations */
@@ -228,20 +210,54 @@ html {
   max-width: 100% !important;
 }
 
-/* Keep bullet points connected to first word */
-.bullet-connected {
-  white-space: nowrap;
-  display: inline;
+/* Special handling for DecodingText components */
+.decoding-text-container {
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  max-width: 100% !important;
+  line-height: 1.5 !important;
 }
 
-/* Bullet point utility - keeps bullet + first word together */
-.bullet-text {
-  word-wrap: break-word;
-  overflow-wrap: break-word;
+.decoding-text-container span {
+  display: inline !important;
 }
 
-.bullet-text .bullet-start {
-  white-space: nowrap;
+.decoding-text-container span:not(.space-char) {
+  display: inline-block !important;
+  min-width: 0.5em;
+  max-width: 1em;
+}
+
+.decoding-text-container .space-char {
+  display: inline !important;
+  white-space: pre !important;
+  min-width: 0.3em;
+}
+
+/* Improved bullet point layout */
+.bullet-flex {
+  display: flex;
+  gap: 0.5rem;
+  line-height: 1.6;
+  align-items: flex-start;
+  max-width: 100%;
+}
+
+.bullet-flex .bullet-icon {
+  flex-shrink: 0;
+  color: #c084fc;
+  min-width: 1em;
+  margin-top: 0.125rem;
+}
+
+.bullet-flex .bullet-text {
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+  min-width: 0;
+  flex: 1;
+  max-width: 100%;
 }
 
 /* Mobile-specific improvements */
@@ -254,8 +270,8 @@ html {
   
   /* Force aggressive word wrapping on mobile */
   * {
-    word-wrap: break-word;
-    overflow-wrap: break-word;
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
   }
   
   /* Improve touch targets */
@@ -297,6 +313,16 @@ html {
   input, textarea, select {
     font-size: 16px; /* Prevents zoom on iOS */
   }
+  
+  /* Enhanced mobile word wrapping */
+  .break-words,
+  .bullet-text,
+  .decoding-text-container {
+    word-wrap: break-word !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    hyphens: auto !important;
+  }
 }
 
 /* Extra small screens */
@@ -312,6 +338,13 @@ html {
   
   .gap-4 {
     gap: 0.75rem;
+  }
+  
+  /* Even more aggressive word wrapping for very small screens */
+  * {
+    word-wrap: break-word !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
   }
 }
 
