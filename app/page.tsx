@@ -599,7 +599,9 @@ export default function HomePage() {
                 <article className="border-l-2 border-purple-600 pl-4 space-y-2 p-2 transition-all rounded cursor-pointer hover:bg-purple-950/10">
                   <div className="text-sm text-purple-300">2024-01-15</div>
                   <h3 className="text-base sm:text-lg font-semibold text-white hover:text-purple-300 cursor-pointer">
-                    Advanced SQL Injection in Modern Applications
+                    <Link href="/blog/advanced-sql-injection">
+                      Advanced SQL Injection in Modern Applications
+                    </Link>
                   </h3>
                   <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
                     <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
@@ -610,7 +612,9 @@ export default function HomePage() {
                 <article className="border-l-2 border-purple-600 pl-4 space-y-2 p-2 transition-all rounded cursor-pointer hover:bg-purple-950/10">
                   <div className="text-sm text-purple-300">2024-01-08</div>
                   <h3 className="text-base sm:text-lg font-semibold text-white hover:text-purple-300 cursor-pointer">
-                    Building VulnHunter: A Python Security Scanner
+                    <Link href="/blog/advanced-sql-injection">
+                      Building VulnHunter: A Python Security Scanner
+                    </Link>
                   </h3>
                   <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
                     <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
@@ -621,7 +625,9 @@ export default function HomePage() {
                 <article className="border-l-2 border-purple-600 pl-4 space-y-2 p-2 transition-all rounded cursor-pointer hover:bg-purple-950/10">
                   <div className="text-sm text-purple-300">2024-01-01</div>
                   <h3 className="text-base sm:text-lg font-semibold text-white hover:text-purple-300 cursor-pointer">
-                    2023 Security Landscape: A Year in Review
+                    <Link href="/blog/advanced-sql-injection">
+                      2023 Security Landscape: A Year in Review
+                    </Link>
                   </h3>
                   <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
                     <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>

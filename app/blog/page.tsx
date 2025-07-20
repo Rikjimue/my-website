@@ -3,7 +3,6 @@
 import Link from "next/link"
 import { Terminal, ArrowLeft, Calendar, Clock, Search, Tag } from "lucide-react"
 import { useEffect, useState, useRef } from "react"
-import { getAllPosts, getAllTags, searchPosts, type BlogPost } from "@/lib/blog"
 
 // Word-based decoding text animation (same as homepage)
 function DecodingText({ 
@@ -138,46 +137,126 @@ function DecodingText({
   )
 }
 
-interface BlogPageProps {
-  initialPosts: BlogPost[]
-  allTags: string[]
+export interface BlogPost {
+  id: string
+  title: string
+  date: string
+  readTime: string
+  excerpt: string
+  tags: string[]
+  content: string
+  slug: string
+  published: boolean
 }
 
-export default function BlogPage({ initialPosts, allTags }: BlogPageProps) {
-  const [posts, setPosts] = useState<BlogPost[]>(initialPosts)
+export default function BlogPage() {
+  const [posts, setPosts] = useState<BlogPost[]>([])
+  const [allTags, setAllTags] = useState<string[]>([])
+  const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  // Handle search
-  const handleSearch = async (query: string) => {
-    setIsLoading(true)
-    setSearchQuery(query)
-    
-    if (query.trim() === "") {
-      setPosts(initialPosts)
-    } else {
+  // Load blog data on component mount
+  useEffect(() => {
+    const loadBlogData = async () => {
       try {
-        const results = await searchPosts(query)
-        setPosts(results)
+        // In a real implementation, this would be an API call
+        // For now, we'll simulate the blog data
+        const mockPosts: BlogPost[] = [
+          {
+            id: "advanced-sql-injection",
+            title: "Advanced SQL Injection in Modern Applications",
+            date: "2024-01-15",
+            readTime: "8 min read",
+            excerpt: "Deep dive into bypassing modern WAFs and exploiting blind SQL injection vulnerabilities in contemporary web applications.",
+            tags: ["sql-injection", "web-security", "penetration-testing"],
+            content: "",
+            slug: "advanced-sql-injection",
+            published: true
+          },
+          {
+            id: "vulnhunter-scanner",
+            title: "Building VulnHunter: A Python Security Scanner",
+            date: "2024-01-08",
+            readTime: "12 min read",
+            excerpt: "Complete guide to building an automated vulnerability scanner using Python with async capabilities and custom payload generation.",
+            tags: ["python", "automation", "security-tools"],
+            content: "",
+            slug: "vulnhunter-scanner",
+            published: true
+          },
+          {
+            id: "malware-analysis-setup",
+            title: "Setting Up a Home Malware Analysis Lab",
+            date: "2024-01-01",
+            readTime: "15 min read",
+            excerpt: "Step-by-step guide to building an isolated malware analysis environment using virtual machines and specialized tools.",
+            tags: ["malware-analysis", "homelab", "virtualization"],
+            content: "",
+            slug: "malware-analysis-setup",
+            published: true
+          },
+          {
+            id: "ctf-writeup-picoctf-2024",
+            title: "PicoCTF 2024: Binary Exploitation Writeups",
+            date: "2023-12-15",
+            readTime: "10 min read",
+            excerpt: "Detailed writeups for the binary exploitation challenges from PicoCTF 2024, including buffer overflows and format string bugs.",
+            tags: ["ctf", "binary-exploitation", "writeup"],
+            content: "",
+            slug: "ctf-writeup-picoctf-2024",
+            published: true
+          }
+        ]
+
+        const mockTags = Array.from(new Set(mockPosts.flatMap(post => post.tags))).sort()
+        
+        setPosts(mockPosts)
+        setFilteredPosts(mockPosts)
+        setAllTags(mockTags)
       } catch (error) {
-        console.error('Search failed:', error)
-        setPosts([])
+        console.error('Failed to load blog data:', error)
+      } finally {
+        setIsLoading(false)
       }
     }
-    setIsLoading(false)
+
+    loadBlogData()
+  }, [])
+
+  // Handle search
+  const handleSearch = (query: string) => {
+    setSearchQuery(query)
+    filterPosts(query, selectedTag)
   }
 
   // Handle tag filtering
   const handleTagFilter = (tag: string | null) => {
     setSelectedTag(tag)
-    if (tag === null) {
-      setPosts(initialPosts)
-    } else {
-      setPosts(initialPosts.filter(post => 
-        post.tags.map(t => t.toLowerCase()).includes(tag.toLowerCase())
-      ))
+    filterPosts(searchQuery, tag)
+  }
+
+  // Filter posts based on search and tag
+  const filterPosts = (search: string, tag: string | null) => {
+    let filtered = posts
+
+    if (search.trim()) {
+      const lowercaseSearch = search.toLowerCase()
+      filtered = filtered.filter(post => 
+        post.title.toLowerCase().includes(lowercaseSearch) ||
+        post.excerpt.toLowerCase().includes(lowercaseSearch) ||
+        post.tags.some(t => t.toLowerCase().includes(lowercaseSearch))
+      )
     }
+
+    if (tag) {
+      filtered = filtered.filter(post => 
+        post.tags.map(t => t.toLowerCase()).includes(tag.toLowerCase())
+      )
+    }
+
+    setFilteredPosts(filtered)
   }
 
   return (
@@ -259,14 +338,14 @@ export default function BlogPage({ initialPosts, allTags }: BlogPageProps) {
         {/* Loading State */}
         {isLoading && (
           <div className="text-center py-8">
-            <p className="text-purple-300">▸ Searching...</p>
+            <p className="text-purple-300">▸ Loading posts...</p>
           </div>
         )}
 
         {/* Blog Posts */}
         <section className="space-y-6">
-          {posts.length > 0 ? (
-            posts.map((post) => (
+          {!isLoading && filteredPosts.length > 0 ? (
+            filteredPosts.map((post) => (
               <article
                 key={post.id}
                 className="border border-purple-500/30 p-6 hover:bg-purple-950/20 transition-colors backdrop-blur-sm bg-black/50 rounded-lg"
@@ -305,7 +384,7 @@ export default function BlogPage({ initialPosts, allTags }: BlogPageProps) {
                 </div>
               </article>
             ))
-          ) : (
+          ) : !isLoading ? (
             <div className="text-center py-12">
               <p className="text-gray-400">▸ No posts found matching your criteria.</p>
               {searchQuery && (
@@ -317,20 +396,22 @@ export default function BlogPage({ initialPosts, allTags }: BlogPageProps) {
                 </button>
               )}
             </div>
-          )}
+          ) : null}
         </section>
 
         {/* Post Statistics */}
-        <section className="py-8 text-center border-t border-purple-500/30 mt-12">
-          <div className="space-y-2">
-            <p className="text-purple-300">
-              ▸ Showing {posts.length} of {initialPosts.length} posts
-            </p>
-            <p className="text-sm text-gray-400">
-              Topics: {allTags.length} tags • Latest: {initialPosts[0]?.date}
-            </p>
-          </div>
-        </section>
+        {!isLoading && (
+          <section className="py-8 text-center border-t border-purple-500/30 mt-12">
+            <div className="space-y-2">
+              <p className="text-purple-300">
+                ▸ Showing {filteredPosts.length} of {posts.length} posts
+              </p>
+              <p className="text-sm text-gray-400">
+                Topics: {allTags.length} tags • Latest: {posts[0]?.date}
+              </p>
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Footer */}
@@ -342,18 +423,4 @@ export default function BlogPage({ initialPosts, allTags }: BlogPageProps) {
       </footer>
     </div>
   )
-}
-
-// This would be used with Next.js getStaticProps or similar
-export async function getStaticProps() {
-  const posts = getAllPosts()
-  const tags = getAllTags()
-  
-  return {
-    props: {
-      initialPosts: posts,
-      allTags: tags,
-    },
-    revalidate: 60, // Regenerate every minute
-  }
 }
