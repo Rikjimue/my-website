@@ -442,7 +442,9 @@ useEffect(() => {
                   <DecodingText delay={2200}>linkedin</DecodingText>
                 </a>
                 <a
-                  href="#"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  href="https://x.com/rikjimue/"
                   className="flex items-center gap-2 text-purple-300 hover:text-white transition-colors group"
                 >
                   <Twitter className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
