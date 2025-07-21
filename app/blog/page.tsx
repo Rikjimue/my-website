@@ -371,7 +371,6 @@ export default function BlogPage() {
       <footer className="border-t border-purple-500/30 p-4 mt-12 backdrop-blur-sm bg-black/80">
         <div className="max-w-4xl mx-auto text-center text-purple-300">
           <p>◈ © 2025 Luke Johnson. All rights reserved.</p>
-          <p className="text-sm mt-2">▸ Built with Next.js and hacker aesthetics</p>
         </div>
       </footer>
     </div>
