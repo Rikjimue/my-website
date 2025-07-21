@@ -3,6 +3,16 @@
 import Link from "next/link"
 import { Terminal, Shield, Code, FileText, Mail, Github, Linkedin, Twitter, Folder, ExternalLink, Menu, X } from "lucide-react"
 import { useEffect, useState, useRef, useCallback } from "react"
+interface BlogPost {
+  id: string
+  title: string
+  date: string
+  readTime: string
+  excerpt: string
+  tags: string[]
+  slug: string
+  published: boolean
+}
 
 // Enhanced word-based decoding text animation with proper wrapping
 function DecodingText({ 
@@ -225,6 +235,26 @@ export default function HomePage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [heroAnimationComplete, setHeroAnimationComplete] = useState(false)
   const [completedAnimations, setCompletedAnimations] = useState(0)
+  const [recentPosts, setRecentPosts] = useState<BlogPost[]>([])
+  const [blogLoading, setBlogLoading] = useState(true)
+  const [blogError, setBlogError] = useState<string | null>(null)
+
+  const loadRecentPosts = async (): Promise<BlogPost[]> => {
+  try {
+    const response = await fetch('/api/blog')
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`)
+    
+    const data = await response.json()
+    
+    if (data.posts && Array.isArray(data.posts)) {
+      return data.posts.slice(0, 3)
+    }
+    return []
+  } catch (error) {
+    console.error('Failed to load recent posts:', error)
+    return []
+  }
+}
   
   // Track when all hero animations are complete
   const handleAnimationComplete = useCallback(() => {
@@ -237,6 +267,32 @@ export default function HomePage() {
       return newCount
     })
   }, [])
+
+useEffect(() => {
+    const loadPosts = async () => {
+      setBlogLoading(true)
+      setBlogError(null)
+      
+      try {
+        const posts = await loadRecentPosts()
+        setRecentPosts(posts)
+        
+        if (posts.length === 0) {
+          setBlogError('No blog posts found. Make sure you have markdown files in content/blog/')
+        }
+      } catch (error) {
+        console.error('Error loading blog posts:', error)
+        setBlogError('Failed to load blog posts')
+      } finally {
+        setBlogLoading(false)
+      }
+    }
+
+    // Only load after hero animation is complete to avoid blocking
+    if (heroAnimationComplete) {
+      loadPosts()
+    }
+  }, [heroAnimationComplete])
 
   return (
     <div className="min-h-screen bg-black text-white font-mono relative overflow-x-hidden">
@@ -587,63 +643,103 @@ export default function HomePage() {
         </AnimatedSection>
 
         {/* Blog Section */}
-        <AnimatedSection isVisible={heroAnimationComplete} delay={800}>
-          <section id="blog" className="border border-purple-500/30 p-4 sm:p-6 backdrop-blur-sm bg-black/50 rounded-lg">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3 text-white">
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-                <h2 className="text-xl sm:text-2xl font-bold">recent_posts.log</h2>
-                <div className="flex-1 border-b border-purple-500/30"></div>
-              </div>
-              <div className="space-y-4">
-                <article className="border-l-2 border-purple-600 pl-4 space-y-2 p-2 transition-all rounded cursor-pointer hover:bg-purple-950/10">
-                  <div className="text-sm text-purple-300">2024-01-15</div>
-                  <h3 className="text-base sm:text-lg font-semibold text-white hover:text-purple-300 cursor-pointer">
-                    <Link href="/blog/advanced-sql-injection">
-                      Advanced SQL Injection in Modern Applications
-                    </Link>
-                  </h3>
-                  <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
-                    <span className="break-words min-w-0">Deep dive into bypassing modern WAFs and exploiting blind SQL injection vulnerabilities in contemporary web applications...</span>
-                  </div>
-                </article>
-
-                <article className="border-l-2 border-purple-600 pl-4 space-y-2 p-2 transition-all rounded cursor-pointer hover:bg-purple-950/10">
-                  <div className="text-sm text-purple-300">2024-01-08</div>
-                  <h3 className="text-base sm:text-lg font-semibold text-white hover:text-purple-300 cursor-pointer">
-                    <Link href="/blog/advanced-sql-injection">
-                      Building VulnHunter: A Python Security Scanner
-                    </Link>
-                  </h3>
-                  <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
-                    <span className="break-words min-w-0">Complete guide to building an automated vulnerability scanner using Python with async capabilities and custom payload generation...</span>
-                  </div>
-                </article>
-
-                <article className="border-l-2 border-purple-600 pl-4 space-y-2 p-2 transition-all rounded cursor-pointer hover:bg-purple-950/10">
-                  <div className="text-sm text-purple-300">2024-01-01</div>
-                  <h3 className="text-base sm:text-lg font-semibold text-white hover:text-purple-300 cursor-pointer">
-                    <Link href="/blog/advanced-sql-injection">
-                      2023 Security Landscape: A Year in Review
-                    </Link>
-                  </h3>
-                  <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
-                    <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
-                    <span className="break-words min-w-0">Analysis of major security incidents, emerging threats, and defensive innovations that shaped the cybersecurity landscape...</span>
-                  </div>
-                </article>
-              </div>
-              <div className="pt-4">
-                <Link href="/blog" className="text-purple-300 hover:text-white transition-colors flex gap-2 items-start leading-relaxed">
-                  <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
-                  <span className="break-words min-w-0">view all posts</span>
-                </Link>
-              </div>
+      <AnimatedSection isVisible={heroAnimationComplete} delay={800}>
+        <section id="blog" className="border border-purple-500/30 p-4 sm:p-6 backdrop-blur-sm bg-black/50 rounded-lg">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 text-white">
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
+              <h2 className="text-xl sm:text-2xl font-bold">recent_posts.log</h2>
+              <div className="flex-1 border-b border-purple-500/30"></div>
             </div>
-          </section>
-        </AnimatedSection>
+            
+            {/* Loading State */}
+            {blogLoading ? (
+              <div className="space-y-4">
+                <div className="flex gap-2 text-purple-300 text-sm">
+                  <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                  <span>Loading recent posts...</span>
+                </div>
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="border-l-2 border-purple-600 pl-4 space-y-2 p-2 animate-pulse">
+                    <div className="h-4 bg-purple-900/30 rounded w-20"></div>
+                    <div className="h-6 bg-purple-900/30 rounded w-3/4"></div>
+                    <div className="h-4 bg-purple-900/30 rounded w-full"></div>
+                  </div>
+                ))}
+              </div>
+            ) : blogError ? (
+              /* Error State */
+              <div className="text-center py-8">
+                <div className="flex gap-2 text-red-400 text-sm justify-center">
+                  <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                  <span>{blogError}</span>
+                </div>
+                <p className="text-gray-400 text-sm mt-2">
+                  No blog posts available
+                </p>
+              </div>
+            ) : recentPosts.length > 0 ? (
+              /* Dynamic Blog Posts from Real Files */
+              <div className="space-y-4">
+                {recentPosts.map((post) => (
+                  <article 
+                    key={post.id}
+                    className="border-l-2 border-purple-600 pl-4 space-y-2 p-2 transition-all rounded hover:bg-purple-950/10"
+                  >
+                    <div className="flex items-center gap-4 text-sm text-purple-300">
+                      <span>{post.date}</span>
+                      <span>•</span>
+                      <span>{post.readTime}</span>
+                    </div>
+                    <h3 className="text-base sm:text-lg font-semibold text-white hover:text-purple-300 cursor-pointer transition-colors">
+                      <Link href={`/blog/${post.slug}`}>
+                        {post.title}
+                      </Link>
+                    </h3>
+                    <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                      <span className="break-words min-w-0">{post.excerpt}</span>
+                    </div>
+                    {/* Show tags */}
+                    {post.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {post.tags.slice(0, 3).map((tag) => (
+                          <span 
+                            key={tag}
+                            className="text-xs px-2 py-0.5 border border-purple-600/30 text-purple-400 rounded"
+                          >
+                            #{tag}
+                          </span>
+                        ))}
+                        {post.tags.length > 3 && (
+                          <span className="text-xs text-purple-400">
+                            +{post.tags.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                ))}
+              </div>
+            ) : (
+              /* No Posts State */
+              <div className="text-center py-8 text-gray-400">
+                <div className="flex gap-2 justify-center">
+                  <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                  <span>No blog posts found.</span>
+                </div>
+              </div>
+            )}
+            
+            <div className="pt-4">
+              <Link href="/blog" className="text-purple-300 hover:text-white transition-colors flex gap-2 items-start leading-relaxed">
+                <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                <span className="break-words min-w-0">view all posts</span>
+              </Link>
+            </div>
+          </div>
+        </section>
+      </AnimatedSection>
 
         {/* Contact Section */}
         <AnimatedSection isVisible={heroAnimationComplete} delay={1000}>

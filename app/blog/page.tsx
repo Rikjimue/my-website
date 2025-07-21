@@ -159,71 +159,24 @@ export default function BlogPage() {
 
   // Load blog data on component mount
   useEffect(() => {
-    const loadBlogData = async () => {
-      try {
-        // In a real implementation, this would be an API call
-        // For now, we'll simulate the blog data
-        const mockPosts: BlogPost[] = [
-          {
-            id: "advanced-sql-injection",
-            title: "Advanced SQL Injection in Modern Applications",
-            date: "2024-01-15",
-            readTime: "8 min read",
-            excerpt: "Deep dive into bypassing modern WAFs and exploiting blind SQL injection vulnerabilities in contemporary web applications.",
-            tags: ["sql-injection", "web-security", "penetration-testing"],
-            content: "",
-            slug: "advanced-sql-injection",
-            published: true
-          },
-          {
-            id: "vulnhunter-scanner",
-            title: "Building VulnHunter: A Python Security Scanner",
-            date: "2024-01-08",
-            readTime: "12 min read",
-            excerpt: "Complete guide to building an automated vulnerability scanner using Python with async capabilities and custom payload generation.",
-            tags: ["python", "automation", "security-tools"],
-            content: "",
-            slug: "vulnhunter-scanner",
-            published: true
-          },
-          {
-            id: "malware-analysis-setup",
-            title: "Setting Up a Home Malware Analysis Lab",
-            date: "2024-01-01",
-            readTime: "15 min read",
-            excerpt: "Step-by-step guide to building an isolated malware analysis environment using virtual machines and specialized tools.",
-            tags: ["malware-analysis", "homelab", "virtualization"],
-            content: "",
-            slug: "malware-analysis-setup",
-            published: true
-          },
-          {
-            id: "ctf-writeup-picoctf-2024",
-            title: "PicoCTF 2024: Binary Exploitation Writeups",
-            date: "2023-12-15",
-            readTime: "10 min read",
-            excerpt: "Detailed writeups for the binary exploitation challenges from PicoCTF 2024, including buffer overflows and format string bugs.",
-            tags: ["ctf", "binary-exploitation", "writeup"],
-            content: "",
-            slug: "ctf-writeup-picoctf-2024",
-            published: true
-          }
-        ]
-
-        const mockTags = Array.from(new Set(mockPosts.flatMap(post => post.tags))).sort()
-        
-        setPosts(mockPosts)
-        setFilteredPosts(mockPosts)
-        setAllTags(mockTags)
-      } catch (error) {
-        console.error('Failed to load blog data:', error)
-      } finally {
-        setIsLoading(false)
-      }
+  const loadBlogData = async () => {
+    try {
+      // Fetch from API route
+      const response = await fetch('/api/blog');
+      const data = await response.json();
+      
+      setPosts(data.posts);
+      setFilteredPosts(data.posts);
+      setAllTags(data.tags);
+    } catch (error) {
+      console.error('Failed to load blog data:', error);
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    loadBlogData()
-  }, [])
+  loadBlogData();
+}, []);
 
   // Handle search
   const handleSearch = (query: string) => {

@@ -6,73 +6,132 @@ import { useEffect, useState, useRef } from "react"
 import { useParams } from "next/navigation"
 
 // Synchronized decoding text animation component
-function DecodingText({ children: text, className = "" }: { children: string; className?: string }) {
-  const [displayChars, setDisplayChars] = useState<string[]>(Array(text.length).fill(""))
+function DecodingText({ 
+  children: text, 
+  className = "", 
+  delay = 0 
+}: { 
+  children: string; 
+  className?: string; 
+  delay?: number;
+}) {
+  const [displayWords, setDisplayWords] = useState<Array<{ word: string; chars: string[]; resolved: boolean }>>([])
+  const [isGlitching, setIsGlitching] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
   const animationFrameId = useRef<number | null>(null)
   const startTimeRef = useRef<number | null>(null)
-  const charResolveTimes = useRef<number[]>([])
-  const currentScrambledChars = useRef<string[]>(Array(text.length).fill(""))
+  const wordResolveTimes = useRef<number[]>([])
 
-  const ANIMATION_DURATION_MS = 2000
-  const SCRAMBLE_FRAME_SKIP = 3
+  const ANIMATION_DURATION_MS = 1500
+  const GLITCH_CHANCE = 0.02
 
   const getRandomChar = () => {
-    const commonChars = "!@#$%^&*()_+-=[]{}|;:,.<>?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-    return commonChars[Math.floor(Math.random() * commonChars.length)]
+    const hackChars = "!@#$%^&*()_+-=[]{}|;:,.<>?~`"
+    const alphaNum = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    const specialChars = "█▓▒░▄▀■□▪▫"
+    const allChars = hackChars + alphaNum + specialChars
+    return allChars[Math.floor(Math.random() * allChars.length)]
   }
 
   useEffect(() => {
-    charResolveTimes.current = text.split("").map(() => Math.random() * ANIMATION_DURATION_MS)
-    currentScrambledChars.current = Array(text.length).fill("").map(() => getRandomChar())
+    const words = text.split(/(\s+)/)
+    const initialWords = words.map(word => ({
+      word,
+      chars: word.split('').map(() => getRandomChar()),
+      resolved: false
+    }))
+    setDisplayWords(initialWords)
 
-    startTimeRef.current = performance.now()
-    let frameCount = 0
-
-    const animate = () => {
-      const elapsed = performance.now() - (startTimeRef.current || 0)
-
-      if (elapsed >= ANIMATION_DURATION_MS) {
-        setDisplayChars(text.split(""))
-        if (animationFrameId.current) {
-          cancelAnimationFrame(animationFrameId.current)
-        }
-        return
-      }
-
-      frameCount++
-
-      setDisplayChars(() => {
-        const newChars = Array(text.length).fill("")
-        for (let i = 0; i < text.length; i++) {
-          if (elapsed >= charResolveTimes.current[i]) {
-            newChars[i] = text[i]
-          } else {
-            if (frameCount % SCRAMBLE_FRAME_SKIP === 0) {
-              currentScrambledChars.current[i] = getRandomChar()
-            }
-            newChars[i] = currentScrambledChars.current[i]
-          }
-        }
-        return newChars
+    const timer = setTimeout(() => {
+      setIsVisible(true)
+      wordResolveTimes.current = words.map((_, i) => {
+        const baseTime = (i / words.length) * ANIMATION_DURATION_MS * 0.8
+        const randomVariation = Math.random() * ANIMATION_DURATION_MS * 0.4
+        return baseTime + randomVariation
       })
 
-      animationFrameId.current = requestAnimationFrame(animate)
-    }
+      startTimeRef.current = performance.now()
+      let frameCount = 0
 
-    animationFrameId.current = requestAnimationFrame(animate)
+      const animate = () => {
+        const elapsed = performance.now() - (startTimeRef.current || 0)
+
+        if (elapsed >= ANIMATION_DURATION_MS) {
+          setDisplayWords(words.map(word => ({
+            word,
+            chars: word.split(''),
+            resolved: true
+          })))
+          setIsGlitching(false)
+          if (animationFrameId.current) {
+            cancelAnimationFrame(animationFrameId.current)
+          }
+          return
+        }
+
+        frameCount++
+        if (Math.random() < GLITCH_CHANCE) {
+          setIsGlitching(true)
+          setTimeout(() => setIsGlitching(false), 100)
+        }
+
+        setDisplayWords(prevWords => 
+          prevWords.map((wordObj, wordIndex) => {
+            if (elapsed >= wordResolveTimes.current[wordIndex]) {
+              return {
+                ...wordObj,
+                chars: wordObj.word.split(''),
+                resolved: true
+              }
+            } else {
+              if (frameCount % 2 === 0) {
+                return {
+                  ...wordObj,
+                  chars: wordObj.word.split('').map(char => 
+                    char === ' ' ? ' ' : getRandomChar()
+                  ),
+                  resolved: false
+                }
+              }
+              return wordObj
+            }
+          })
+        )
+
+        animationFrameId.current = requestAnimationFrame(animate)
+      }
+
+      animationFrameId.current = requestAnimationFrame(animate)
+    }, delay)
 
     return () => {
+      clearTimeout(timer)
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current)
       }
     }
-  }, [text])
+  }, [text, delay])
 
   return (
-    <span className={className}>
-      {displayChars.map((char, index) => (
-        <span key={index} style={{ display: "inline-block", width: "0.6em", textAlign: "center" }}>
-          {char}
+    <span 
+      className={`${className} ${isGlitching ? 'animate-pulse text-red-400' : ''} transition-all duration-300 ${
+        isVisible ? 'opacity-100' : 'opacity-0'
+      }`}
+      style={{ 
+        wordBreak: 'break-word', 
+        overflowWrap: 'anywhere',
+        lineHeight: '1.5'
+      }}
+    >
+      {displayWords.map((wordObj, wordIndex) => (
+        <span 
+          key={wordIndex}
+          className="inline"
+          style={{
+            textShadow: isGlitching && !wordObj.resolved ? '2px 0 #ff0000, -2px 0 #00ffff' : 'none'
+          }}
+        >
+          {wordObj.chars.join('')}
         </span>
       ))}
     </span>
