@@ -278,7 +278,7 @@ useEffect(() => {
         setRecentPosts(posts)
         
         if (posts.length === 0) {
-          setBlogError('No blog posts found. Make sure you have markdown files in content/blog/')
+          setBlogError('No blog posts found.')
         }
       } catch (error) {
         console.error('Error loading blog posts:', error)
@@ -670,10 +670,6 @@ useEffect(() => {
             ) : blogError ? (
               /* Error State */
               <div className="text-center py-8">
-                <div className="flex gap-2 text-red-400 text-sm justify-center">
-                  <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
-                  <span>{blogError}</span>
-                </div>
                 <p className="text-gray-400 text-sm mt-2">
                   No blog posts available
                 </p>
