@@ -3,10 +3,11 @@ import { NextResponse } from 'next/server';
 
 export async function GET(
   request: Request,
-  { params }: { params: { slug: string } }
+  { params }: { params: Promise<{ slug: string }> }
 ) {
   try {
-    const post = getPostBySlug(params.slug);
+    const { slug } = await params;
+    const post = getPostBySlug(slug);
     
     if (!post) {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
