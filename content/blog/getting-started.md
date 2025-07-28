@@ -1,18 +1,18 @@
 ---
 
-title: “Getting Started”
+title: "Getting Started"
 
-date: “2025-07-28”
+date: "2025-07-28"
 
-readTime: “5 min read”
+readTime: "5 min read"
 
-excerpt: “I’ve been building a homelab for the past few months, and I figured it was time to document what I’m working on. This site is just a place to share the cool stuff I’m building, the problems I’m solving, and maybe help anyone trying to do similar things.”
+excerpt: "I’ve been building a homelab for the past few months, and I figured it was time to document what I’m working on. This site is just a place to share the cool stuff I’m building, the problems I’m solving, and maybe help anyone trying to do similar things."
 
-tags: [“Blog”]
+tags: ["Blog"]
 
 published: true
 
-author: “Luke Johnson”
+author: "Luke Johnson"
 
 ---
 
@@ -56,7 +56,7 @@ I’ll be putting configuration files and scripts in a public repository as thin
 If you’re working on similar projects or have ideas for interesting things to try, feel free to reach out. I’m always curious to hear what other people are building in their labs.
 
 ## Getting Started
-If you want to follow along with what I’m building, the best approach is probably to check back occasionally or subscribe to the RSS feed. I’ll be posting regularly as projects reach interesting milestones or when I solve problems that might be useful to share.
+If you want to follow along with what I’m building, the best approach is probably to check back occasionally or subscribe to the RSS/JSON feed. I’ll be posting regularly as projects reach interesting milestones or when I solve problems that might be useful to share.
 
 The next post will be about building the server hardware and the initial Proxmox setup. It’s been a fun project, and there are definitely some lessons learned worth sharing.
 
