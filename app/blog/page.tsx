@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Terminal, ArrowLeft, Calendar, Clock, Search, Tag } from "lucide-react"
+import { Terminal, ArrowLeft, Calendar, Clock, Search, Tag, Rss } from "lucide-react"
 import { useEffect, useState, useRef } from "react"
 
 // Word-based decoding text animation (same as homepage)
@@ -287,6 +287,19 @@ export default function BlogPage() {
             ))}
           </div>
         </section>
+        {/* RSS Feed Link */}
+        <div className="flex justify-end mb-4">
+          <a
+            href="/rss.xml"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-purple-300 hover:text-white transition-colors text-sm"
+            title="Subscribe to RSS feed"
+          >
+            <Rss className="w-4 h-4" />
+            <span>RSS Feed</span>
+          </a>
+        </div>
 
         {/* Loading State */}
         {isLoading && (

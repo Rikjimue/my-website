@@ -1,5 +1,5 @@
 import type React from "react"
-import type { Metadata } from "next"
+import type { Metadata, Viewport } from "next"
 import { JetBrains_Mono } from "next/font/google"
 import "./globals.css"
 
@@ -20,7 +20,13 @@ const structuredData = {
   ]
 }
 
-export const metadata = {
+// Separate viewport export (this fixes the warning)
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+}
+
+export const metadata: Metadata = {
   title: 'Luke Johnson - Cybersecurity Student & CTF Competitor',
   description: 'Cybersecurity student at Purdue University specializing in malware analysis, reverse engineering, and CTF competitions. Currently working as IT Security Intern at ConnectOne Bank.',
   keywords: [
@@ -60,11 +66,10 @@ export const metadata = {
     'network security',
     'digital forensics'
   ].join(', '),
-  author: 'Luke Johnson',
+  authors: [{ name: 'Luke Johnson', url: 'https://rikjimue.com' }],
   creator: 'Luke Johnson',
   publisher: 'Luke Johnson',
   robots: 'index, follow',
-  viewport: 'width=device-width, initial-scale=1',
   
   openGraph: {
     title: 'Luke Johnson - Cybersecurity Student & CTF Competitor',
@@ -83,7 +88,6 @@ export const metadata = {
     ],
   },
 
-  // Twitter Cards
   twitter: {
     card: 'summary_large_image',
     title: 'Luke Johnson - Cybersecurity Student & CTF Competitor',
@@ -99,12 +103,17 @@ export const metadata = {
   },
 
   category: 'technology',
-  contact: 'contact@rikjimue.com',
   
   alternates: {
     canonical: 'https://rikjimue.com',
+    types: {
+      'application/rss+xml': [
+        { url: '/rss.xml', title: 'Luke Johnson - Security Research Blog RSS Feed' }
+      ]
+    }
   },
 }
+
 export default function RootLayout({
   children,
 }: {
@@ -112,6 +121,18 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link
+          rel="alternate"
+          type="application/rss+xml"
+          title="Luke Johnson - Security Research Blog"
+          href="/rss.xml"
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+        />
+      </head>
       <body className={jetbrainsMono.className}>{children}</body>
     </html>
   )
