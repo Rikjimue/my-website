@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { Terminal, Shield, Code, FileText, Mail, Github, Linkedin, Twitter, Folder, ExternalLink, Menu, X } from "lucide-react"
 import { useEffect, useState, useRef, useCallback } from "react"
+import DecodingText from "@/components/DecodingText"
+
 interface BlogPost {
   id: string
   title: string
@@ -12,148 +14,6 @@ interface BlogPost {
   tags: string[]
   slug: string
   published: boolean
-}
-
-function DecodingText({ 
-  children: text, 
-  className = "", 
-  delay = 0, 
-  onComplete 
-}: { 
-  children: string; 
-  className?: string; 
-  delay?: number;
-  onComplete?: () => void;
-}) {
-  const [displayWords, setDisplayWords] = useState<Array<{ word: string; chars: string[]; resolved: boolean }>>([])
-  const [isGlitching, setIsGlitching] = useState(false)
-  const [isVisible, setIsVisible] = useState(false)
-  const animationFrameId = useRef<number | null>(null)
-  const startTimeRef = useRef<number | null>(null)
-  const wordResolveTimes = useRef<number[]>([])
-
-  const ANIMATION_DURATION_MS = 1500
-  const GLITCH_CHANCE = 0.02
-
-  const getRandomChar = () => {
-    const hackChars = "!@#$%^&*()_+-=[]{}|;:,.<>?~`"
-    const alphaNum = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-    const specialChars = "█▓▒░▄▀■□▪▫"
-    const allChars = hackChars + alphaNum + specialChars
-    return allChars[Math.floor(Math.random() * allChars.length)]
-  }
-
-  useEffect(() => {
-    const words = text.split(/(\s+)/)
-    const initialWords = words.map(word => ({
-      word,
-      chars: word.split('').map(() => getRandomChar()),
-      resolved: false
-    }))
-    
-    setDisplayWords(initialWords)
-
-    const timer = setTimeout(() => {
-      setIsVisible(true)
-      
-      wordResolveTimes.current = words.map((_, i) => {
-        const baseTime = (i / words.length) * ANIMATION_DURATION_MS * 0.8
-        const randomVariation = Math.random() * ANIMATION_DURATION_MS * 0.4
-        return baseTime + randomVariation
-      })
-
-      startTimeRef.current = performance.now()
-      let frameCount = 0
-
-      const animate = () => {
-        const elapsed = performance.now() - (startTimeRef.current || 0)
-
-        if (elapsed >= ANIMATION_DURATION_MS) {
-          setDisplayWords(words.map(word => ({
-            word,
-            chars: word.split(''),
-            resolved: true
-          })))
-          setIsGlitching(false)
-          if (animationFrameId.current) {
-            cancelAnimationFrame(animationFrameId.current)
-          }
-          setTimeout(() => {
-            onComplete?.()
-          }, 100)
-          return
-        }
-
-        frameCount++
-
-        if (Math.random() < GLITCH_CHANCE) {
-          setIsGlitching(true)
-          setTimeout(() => setIsGlitching(false), 100)
-        }
-
-        setDisplayWords(prevWords => 
-          prevWords.map((wordObj, wordIndex) => {
-            if (elapsed >= wordResolveTimes.current[wordIndex]) {
-              // Word is resolved
-              return {
-                ...wordObj,
-                chars: wordObj.word.split(''),
-                resolved: true
-              }
-            } else {
-              // Word is still scrambling
-              if (frameCount % 2 === 0) {
-                return {
-                  ...wordObj,
-                  chars: wordObj.word.split('').map(char => 
-                    char === ' ' ? ' ' : getRandomChar()
-                  ),
-                  resolved: false
-                }
-              }
-              return wordObj
-            }
-          })
-        )
-
-        animationFrameId.current = requestAnimationFrame(animate)
-      }
-
-      animationFrameId.current = requestAnimationFrame(animate)
-    }, delay)
-
-    return () => {
-      clearTimeout(timer)
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current)
-      }
-    }
-  }, [text, delay, onComplete])
-
-  return (
-    <span 
-      className={`${className} ${isGlitching ? 'animate-pulse text-red-400' : ''} transition-all duration-300 ${
-        isVisible ? 'opacity-100' : 'opacity-0'
-      }`}
-      style={{ 
-        wordBreak: 'break-word', 
-        overflowWrap: 'anywhere',
-        lineHeight: '1.5'
-      }}
-    >
-      {displayWords.map((wordObj, wordIndex) => (
-        <span 
-          key={wordIndex}
-          className="inline"
-          style={{
-            textShadow: isGlitching && !wordObj.resolved ? '2px 0 #ff0000, -2px 0 #00ffff' : 'none'
-          }}
-        >
-          {wordObj.chars.join('')}
-        </span>
-      ))}
-    </span>
-  )
 }
 
 function AnimatedSection({ 
@@ -317,6 +177,9 @@ useEffect(() => {
           <button 
             className="md:hidden text-purple-400 hover:text-white transition-colors"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-navigation"
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -324,21 +187,51 @@ useEffect(() => {
 
         {/* Mobile Navigation Menu */}
         {mobileMenuOpen && (
-          <div className="md:hidden absolute top-full left-0 right-0 bg-black/95 border-b border-purple-500/30 backdrop-blur-sm">
+          <div 
+            className="md:hidden absolute top-full left-0 right-0 bg-black/95 border-b border-purple-500/30 backdrop-blur-sm"
+            id="mobile-navigation"
+            role="navigation"
+            aria-label="Mobile navigation menu"
+          >
             <div className="flex flex-col space-y-4 p-4">
-              <Link href="#about" className="hover:text-purple-400 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+              <Link 
+                href="#about" 
+                className="hover:text-purple-400 transition-colors" 
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Go to About section"
+              >
                 about
               </Link>
-              <Link href="#skills" className="hover:text-purple-400 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+              <Link 
+                href="#skills" 
+                className="hover:text-purple-400 transition-colors" 
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Go to Skills section"
+              >
                 skills
               </Link>
-              <Link href="#projects" className="hover:text-purple-400 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+              <Link 
+                href="#projects" 
+                className="hover:text-purple-400 transition-colors" 
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Go to Projects section"
+              >
                 projects
               </Link>
-              <Link href="#blog" className="hover:text-purple-400 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+              <Link 
+                href="#blog" 
+                className="hover:text-purple-400 transition-colors" 
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Go to Blog section"
+              >
                 blog
               </Link>
-              <Link href="#contact" className="hover:text-purple-400 transition-colors" onClick={() => setMobileMenuOpen(false)}>
+              <Link 
+                href="#contact" 
+                className="hover:text-purple-400 transition-colors" 
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Go to Contact section"
+              >
                 contact
               </Link>
             </div>
@@ -352,7 +245,7 @@ useEffect(() => {
           <div className="grid lg:grid-cols-2 gap-6 sm:gap-8 items-center">
             <div className="space-y-4 sm:space-y-6 order-2 lg:order-1 min-w-0">
               <AnimatedSection isVisible={true} className="text-sm text-purple-300">
-                <span className="text-white">╭─</span> <DecodingText delay={100} onComplete={handleAnimationComplete}>whoami</DecodingText>
+                <DecodingText delay={100} onComplete={handleAnimationComplete}>╭─ whoami</DecodingText>
               </AnimatedSection>
               
               <AnimatedSection isVisible={true} className="space-y-2 min-w-0">
@@ -418,6 +311,7 @@ useEffect(() => {
                   rel="noopener noreferrer"
                   href="https://github.com/Rikjimue"
                   className="flex items-center gap-2 text-purple-300 hover:text-white transition-colors group"
+                  aria-label="Visit Luke Johnson's GitHub profile (opens in new tab)"
                 >
                   <Github className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
                   <DecodingText delay={2000}>github</DecodingText>
@@ -427,6 +321,7 @@ useEffect(() => {
                   rel="noopener noreferrer"
                   href="https://www.linkedin.com/in/rikjimue/"
                   className="flex items-center gap-2 text-purple-300 hover:text-white transition-colors group"
+                  aria-label="Visit Luke Johnson's LinnkedIn profile (opens in new tab)"
                 >
                   <Linkedin className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
                   <DecodingText delay={2200}>linkedin</DecodingText>
@@ -436,6 +331,7 @@ useEffect(() => {
                   rel="noopener noreferrer"
                   href="https://x.com/rikjimue/"
                   className="flex items-center gap-2 text-purple-300 hover:text-white transition-colors group"
+                  aria-label="Visit Luke Johnson's LinkedIn profile (opens in new tab)"
                 >
                   <Twitter className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform" />
                   <DecodingText delay={2400}>twitter</DecodingText>
@@ -447,9 +343,9 @@ useEffect(() => {
             <AnimatedSection 
               isVisible={true} 
               delay={500}
-              className="border border-purple-500/30 backdrop-blur-sm bg-black/70 rounded-lg order-1 lg:order-2 max-w-full overflow-hidden"
+              className="ascii-art-section border border-purple-500/30 backdrop-blur-sm bg-black/70 rounded-lg order-1 lg:order-2 max-w-full overflow-hidden"
             >
-              <div className="p-3 sm:p-6 flex flex-col items-center justify-center min-w-0 max-w-full">
+              <div className="ascii-container p-3 sm:p-6 flex flex-col items-center justify-center min-w-0 max-w-full">
                 <div className="text-purple-400 whitespace-pre leading-none w-full flex justify-center overflow-hidden min-w-0" style={{
                   fontFamily: '"SF Mono", "Monaco", "Inconsolata", "Roboto Mono", "Source Code Pro", monospace',
                   letterSpacing: '0',
@@ -464,14 +360,16 @@ useEffect(() => {
 ██║  ██║██║██║  ██╗╚█████╔╝██║██║ ╚═╝ ██║╚██████╔╝███████╗
 ╚═╝  ╚═╝╚═╝╚═╝  ╚═╝ ╚════╝ ╚═╝╚═╝     ╚═╝ ╚═════╝ ╚══════╝`}
                 </div>
-                <div className="text-xs text-purple-300/70 mt-2 sm:mt-4 px-2 max-w-full w-full flex justify-center">
-                  <div className="flex gap-2 leading-relaxed text-center">
-                    <span className="text-purple-400 flex-shrink-0">▸</span>
-                    <span className="break-words min-w-0" style={{ wordBreak: 'break-word', overflowWrap: 'anywhere' }}>
-                      <DecodingText delay={1400}>
-                        "The good news about computers is that they do what you tell them to do. The bad news is that they do what you tell them to do." - Ted Nelson
-                      </DecodingText>
-                    </span>
+                <div className="quote-container mt-2 sm:mt-4 w-full px-2 sm:px-4">
+                  <div className="text-xs text-purple-300/70 leading-relaxed text-center max-w-full">
+                    <div className="flex items-start gap-2 justify-center max-w-full">
+                      <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
+                      <div className="quote-text-content flex-1 max-w-full text-left sm:text-center">
+                        <DecodingText delay={1400}>
+                          "The good news about computers is that they do what you tell them to do. The bad news is that they do what you tell them to do." - Ted Nelson
+                        </DecodingText>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -610,6 +508,7 @@ useEffect(() => {
                             className="text-purple-300 hover:text-white transition-colors"
                             target="_blank"
                             rel="noopener noreferrer"
+                            aria-label={`View ${project.name} on GitHub (opens in new tab)`}
                           >
                             <ExternalLink className="w-4 h-4" />
                           </a>
@@ -685,7 +584,6 @@ useEffect(() => {
                       </Link>
                     </h3>
                     <div className="flex gap-2 text-gray-300 text-sm leading-relaxed">
-                      <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
                       <span className="break-words min-w-0">{post.excerpt}</span>
                     </div>
                     {/* Show tags */}

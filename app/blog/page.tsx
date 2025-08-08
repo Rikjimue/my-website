@@ -1,156 +1,16 @@
+// Optimized blog page component with layout shift prevention
 "use client"
 
 import Link from "next/link"
 import { Terminal, ArrowLeft, Calendar, Clock, Search, Tag, Rss } from "lucide-react"
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useMemo } from "react"
+import dynamic from 'next/dynamic'
 
-function DecodingText({ 
-  children: text, 
-  className = "", 
-  delay = 0, 
-  onComplete 
-}: { 
-  children: string; 
-  className?: string; 
-  delay?: number;
-  onComplete?: () => void;
-}) {
-  const [displayWords, setDisplayWords] = useState<Array<{ word: string; chars: string[]; resolved: boolean }>>([])
-  const [isGlitching, setIsGlitching] = useState(false)
-  const [isVisible, setIsVisible] = useState(false)
-  const animationFrameId = useRef<number | null>(null)
-  const startTimeRef = useRef<number | null>(null)
-  const wordResolveTimes = useRef<number[]>([])
-
-  const ANIMATION_DURATION_MS = 1500
-  const GLITCH_CHANCE = 0.02
-
-  const getRandomChar = () => {
-    const hackChars = "!@#$%^&*()_+-=[]{}|;:,.<>?~`"
-    const alphaNum = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-    const specialChars = "█▓▒░▄▀■□▪▫"
-    const allChars = hackChars + alphaNum + specialChars
-    return allChars[Math.floor(Math.random() * allChars.length)]
-  }
-
-  useEffect(() => {
-    const words = text.split(/(\s+)/)
-    const initialWords = words.map(word => ({
-      word,
-      chars: word.split('').map(() => getRandomChar()),
-      resolved: false
-    }))
-    
-    setDisplayWords(initialWords)
-
-    const timer = setTimeout(() => {
-      setIsVisible(true)
-      
-      wordResolveTimes.current = words.map((_, i) => {
-        const baseTime = (i / words.length) * ANIMATION_DURATION_MS * 0.8
-        const randomVariation = Math.random() * ANIMATION_DURATION_MS * 0.4
-        return baseTime + randomVariation
-      })
-
-      startTimeRef.current = performance.now()
-      let frameCount = 0
-
-      const animate = () => {
-        const elapsed = performance.now() - (startTimeRef.current || 0)
-
-        if (elapsed >= ANIMATION_DURATION_MS) {
-          setDisplayWords(words.map(word => ({
-            word,
-            chars: word.split(''),
-            resolved: true
-          })))
-          setIsGlitching(false)
-          if (animationFrameId.current) {
-            cancelAnimationFrame(animationFrameId.current)
-          }
-          setTimeout(() => {
-            onComplete?.()
-          }, 100)
-          return
-        }
-
-        frameCount++
-
-        if (Math.random() < GLITCH_CHANCE) {
-          setIsGlitching(true)
-          setTimeout(() => setIsGlitching(false), 100)
-        }
-
-        setDisplayWords(prevWords => 
-          prevWords.map((wordObj, wordIndex) => {
-            if (elapsed >= wordResolveTimes.current[wordIndex]) {
-              return {
-                ...wordObj,
-                chars: wordObj.word.split(''),
-                resolved: true
-              }
-            } else {
-              if (frameCount % 2 === 0) {
-                return {
-                  ...wordObj,
-                  chars: wordObj.word.split('').map(char => 
-                    char === ' ' ? ' ' : getRandomChar()
-                  ),
-                  resolved: false
-                }
-              }
-              return wordObj
-            }
-          })
-        )
-
-        animationFrameId.current = requestAnimationFrame(animate)
-      }
-
-      animationFrameId.current = requestAnimationFrame(animate)
-    }, delay)
-
-    return () => {
-      clearTimeout(timer)
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current)
-      }
-    }
-  }, [text, delay, onComplete])
-
-  return (
-    <span 
-      className={`${className} ${isGlitching ? 'animate-pulse text-red-400' : ''} transition-all duration-300 ${
-        isVisible ? 'opacity-100' : 'opacity-0'
-      }`}
-      style={{ 
-        wordBreak: 'break-word', 
-        overflowWrap: 'anywhere',
-        lineHeight: '1.5',
-        // CRITICAL FIX: Reserve space to prevent layout shift
-        minHeight: '1.5em',
-        fontFamily: 'monospace', // Ensure consistent character width
-        letterSpacing: '0', // Prevent character spacing changes
-      }}
-      // ACCESSIBILITY FIX: Add aria-label for screen readers
-      aria-label={text}
-      aria-live="polite"
-    >
-      {displayWords.map((wordObj, wordIndex) => (
-        <span 
-          key={wordIndex}
-          className="inline-block" // Change to inline-block for better control
-          style={{
-            textShadow: isGlitching && !wordObj.resolved ? '2px 0 #ff0000, -2px 0 #00ffff' : 'none',
-            minWidth: wordObj.word.length * 0.6 + 'em', // Reserve space based on final word length
-          }}
-        >
-          {wordObj.chars.join('')}
-        </span>
-      ))}
-    </span>
-  )
-}
+// Lazy load heavy components
+const DecodingText = dynamic(() => import('@/components/DecodingText'), {
+  loading: () => <span className="text-decoding opacity-0" style={{ minWidth: '10ch' }}>Loading...</span>,
+  ssr: false
+})
 
 export interface BlogPost {
   id: string
@@ -164,48 +24,112 @@ export interface BlogPost {
   published: boolean
 }
 
-export default function BlogPage() {
+// Optimized skeleton loader to prevent layout shift
+function BlogPostSkeleton() {
+  return (
+    <article className="border border-purple-500/30 p-6 backdrop-blur-sm bg-black/50 rounded-lg animate-pulse">
+      <div className="space-y-3">
+        <div className="flex items-center gap-4 text-sm">
+          <div className="h-4 bg-purple-900/30 rounded w-20"></div>
+          <div className="h-4 bg-purple-900/30 rounded w-16"></div>
+        </div>
+        <div className="h-6 bg-purple-900/30 rounded w-3/4"></div>
+        <div className="h-4 bg-purple-900/30 rounded w-full"></div>
+        <div className="flex gap-2">
+          <div className="h-6 bg-purple-900/30 rounded w-16"></div>
+          <div className="h-6 bg-purple-900/30 rounded w-20"></div>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+// Optimized blog post component
+function OptimizedBlogPost({ post, onTagFilter }: { post: BlogPost; onTagFilter: (tag: string) => void }) {
+  const [isVisible, setIsVisible] = useState(false)
+  const ref = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true)
+          observer.disconnect()
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    if (ref.current) {
+      observer.observe(ref.current)
+    }
+
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <article
+      ref={ref}
+      className={`border border-purple-500/30 p-6 hover:bg-purple-950/20 transition-colors backdrop-blur-sm bg-black/50 rounded-lg layout-stable ${
+        isVisible ? 'fade-in-optimized' : 'opacity-0'
+      }`}
+      style={{ minHeight: '200px' }} // Reserve space to prevent layout shift
+    >
+      <div className="space-y-3">
+        <div className="flex items-center gap-4 text-sm text-purple-300">
+          <div className="flex items-center gap-1">
+            <Calendar className="w-4 h-4" />
+            <span>{post.date}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Clock className="w-4 h-4" />
+            <span>{post.readTime}</span>
+          </div>
+        </div>
+
+        <h2 className="text-xl font-bold text-white hover:text-purple-300 cursor-pointer transition-colors">
+          <Link 
+            href={`/blog/${post.slug}`}
+            aria-label={`Read blog post: ${post.title}`}
+          >
+            {post.title}
+          </Link>
+        </h2>
+
+        <p className="text-gray-300 break-words">{post.excerpt}</p>
+
+        <div className="flex flex-wrap gap-2">
+          {post.tags.map((tag) => (
+            <button
+              key={tag}
+              onClick={() => onTagFilter(tag)}
+              className="text-xs px-2 py-1 border border-purple-600/50 text-purple-300 hover:border-purple-400 transition-colors"
+              aria-label={`Filter posts by ${tag} tag`}
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+      </div>
+    </article>
+  )
+}
+
+export default function OptimizedBlogPage() {
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
   const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-  const loadBlogData = async () => {
-    try {
-      const response = await fetch('/api/blog');
-      const data = await response.json();
-      
-      setPosts(data.posts);
-      setFilteredPosts(data.posts);
-      setAllTags(data.tags);
-    } catch (error) {
-      console.error('Failed to load blog data:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  loadBlogData();
-}, []);
-
-  const handleSearch = (query: string) => {
-    setSearchQuery(query)
-    filterPosts(query, selectedTag)
-  }
-
-  const handleTagFilter = (tag: string | null) => {
-    setSelectedTag(tag)
-    filterPosts(searchQuery, tag)
-  }
-
-  const filterPosts = (search: string, tag: string | null) => {
+  // Memoized filtered posts to prevent unnecessary re-renders
+  const memoizedFilteredPosts = useMemo(() => {
     let filtered = posts
 
-    if (search.trim()) {
-      const lowercaseSearch = search.toLowerCase()
+    if (searchQuery.trim()) {
+      const lowercaseSearch = searchQuery.toLowerCase()
       filtered = filtered.filter(post => 
         post.title.toLowerCase().includes(lowercaseSearch) ||
         post.excerpt.toLowerCase().includes(lowercaseSearch) ||
@@ -213,35 +137,78 @@ export default function BlogPage() {
       )
     }
 
-    if (tag) {
+    if (selectedTag) {
       filtered = filtered.filter(post => 
-        post.tags.map(t => t.toLowerCase()).includes(tag.toLowerCase())
+        post.tags.map(t => t.toLowerCase()).includes(selectedTag.toLowerCase())
       )
     }
 
-    setFilteredPosts(filtered)
+    return filtered
+  }, [posts, searchQuery, selectedTag])
+
+  useEffect(() => {
+    setFilteredPosts(memoizedFilteredPosts)
+  }, [memoizedFilteredPosts])
+
+  useEffect(() => {
+    const loadBlogData = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        
+        const response = await fetch('/api/blog')
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        
+        setPosts(data.posts || [])
+        setAllTags(data.tags || [])
+      } catch (error) {
+        console.error('Failed to load blog data:', error)
+        setError('Failed to load blog posts')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadBlogData()
+  }, [])
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query)
+  }
+
+  const handleTagFilter = (tag: string | null) => {
+    setSelectedTag(tag)
   }
 
   return (
     <div className="min-h-screen bg-black text-white font-mono">
-      {/* Header */}
+      {/* Header with improved accessibility */}
       <header className="border-b border-purple-500/30 p-4 backdrop-blur-sm bg-black/80">
-        <nav className="max-w-4xl mx-auto flex items-center justify-between">
+        <nav className="max-w-4xl mx-auto flex items-center justify-between" role="navigation" aria-label="Blog navigation">
           <div className="flex items-center gap-2">
             <Terminal className="w-6 h-6 text-purple-400" />
             <span className="text-xl font-bold">
               <DecodingText>rikjimue@sec:~/blog$</DecodingText>
             </span>
           </div>
-          <Link href="/" className="flex items-center gap-2 hover:text-purple-400 transition-colors">
+          <Link 
+            href="/" 
+            className="flex items-center gap-2 hover:text-purple-400 transition-colors"
+            aria-label="Return to homepage"
+          >
             <ArrowLeft className="w-4 h-4" />
             <DecodingText delay={500}>back to home</DecodingText>
           </Link>
         </nav>
       </header>
 
-      <main className="max-w-4xl mx-auto p-4">
-        {/* Page Header */}
+      <main className="max-w-4xl mx-auto p-4" id="main-content">
+        {/* Page Header with stable layout */}
         <section className="py-8">
           <div className="space-y-4">
             <div className="text-sm text-purple-300">
@@ -251,16 +218,16 @@ export default function BlogPage() {
               <DecodingText delay={200}>Security Research Blog</DecodingText>
             </h1>
             <p className="text-gray-300 border-l-2 border-purple-600 pl-4">
-              ▸ <DecodingText delay={400}>Thoughts, research, and tutorials on cybersecurity and ethical hacking</DecodingText>
+              <DecodingText delay={400}>Thoughts, homelab, research, and tutorials on cybersecurity</DecodingText>
             </p>
           </div>
         </section>
 
-        {/* Search and Filters */}
-        <section className="mb-8 space-y-4">
+        {/* Search and Filters with improved accessibility */}
+        <section className="mb-8 space-y-4" role="search" aria-label="Blog search and filters">
           {/* Search Bar */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-purple-400" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-purple-400" aria-hidden="true" />
             <input
               type="text"
               placeholder="Search posts..."
@@ -268,6 +235,7 @@ export default function BlogPage() {
               onChange={(e) => handleSearch(e.target.value)}
               className="w-full bg-black border border-purple-500/30 text-white pl-10 pr-4 py-2 rounded focus:border-purple-400 focus:outline-none"
               aria-describedby="search-help"
+              aria-label="Search blog posts"
             />
             <div id="search-help" className="sr-only">
               Search through blog post titles, content, and tags
@@ -275,7 +243,7 @@ export default function BlogPage() {
           </div>
 
           {/* Tag Filters */}
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filter posts by tags">
             <button
               onClick={() => handleTagFilter(null)}
               className={`text-xs px-3 py-1 border transition-colors ${
@@ -283,6 +251,8 @@ export default function BlogPage() {
                   ? 'border-purple-400 text-purple-300 bg-purple-950/20' 
                   : 'border-purple-600/50 text-purple-300 hover:border-purple-400'
               }`}
+              aria-pressed={selectedTag === null}
+              aria-label="Show all posts"
             >
               All Posts
             </button>
@@ -295,78 +265,53 @@ export default function BlogPage() {
                     ? 'border-purple-400 text-purple-300 bg-purple-950/20' 
                     : 'border-purple-600/50 text-purple-300 hover:border-purple-400'
                 }`}
+                aria-pressed={selectedTag === tag}
+                aria-label={`Filter posts by ${tag} tag`}
               >
                 #{tag}
               </button>
             ))}
           </div>
         </section>
-        {/* RSS Feed Link */}
+
+        {/* RSS Feed Link with better accessibility */}
         <div className="flex justify-end mb-4">
           <a
             href="/rss.xml"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-2 text-purple-300 hover:text-white transition-colors text-sm"
-            title="Subscribe to RSS feed"
             aria-label="Subscribe to RSS feed (opens in new tab)"
           >
-            <Rss className="w-4 h-4" />
+            <Rss className="w-4 h-4" aria-hidden="true" />
             <span>RSS Feed</span>
           </a>
         </div>
 
-        {/* Loading State */}
-        {isLoading && (
-          <div className="text-center py-8">
-            <p className="text-purple-300">▸ Loading posts...</p>
-          </div>
-        )}
-
-        {/* Blog Posts */}
-        <section className="space-y-6">
-          {!isLoading && filteredPosts.length > 0 ? (
-            filteredPosts.map((post) => (
-              <article
-                key={post.id}
-                className="border border-purple-500/30 p-6 hover:bg-purple-950/20 transition-colors backdrop-blur-sm bg-black/50 rounded-lg"
-              >
-                <div className="space-y-3">
-                  <div className="flex items-center gap-4 text-sm text-purple-300">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="w-4 h-4" />
-                      {post.date}
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      {post.readTime}
-                    </div>
-                  </div>
-
-                  <h2 className="text-xl font-bold text-white hover:text-purple-300 cursor-pointer transition-colors">
-                    <Link href={`/blog/${post.slug}`}>
-                      {post.title}
-                    </Link>
-                  </h2>
-
-                  <p className="text-gray-300">▸ {post.excerpt}</p>
-
-                  <div className="flex flex-wrap gap-2">
-                    {post.tags.map((tag) => (
-                      <button
-                        key={tag}
-                        onClick={() => handleTagFilter(tag)}
-                        className="text-xs px-2 py-1 border border-purple-600/50 text-purple-300 hover:border-purple-400 transition-colors"
-                        aria-label={`Filter posts by ${tag} tag`}
-                      >
-                        #{tag}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </article>
-            ))
-          ) : !isLoading ? (
+        {/* Blog Posts with loading states and layout stability */}
+        <section className="space-y-6" aria-label="Blog posts">
+          {isLoading ? (
+            // Loading skeletons to prevent layout shift
+            <div className="space-y-6">
+              {[1, 2, 3].map((i) => (
+                <BlogPostSkeleton key={i} />
+              ))}
+            </div>
+          ) : error ? (
+            <div className="text-center py-8" role="alert">
+              <p className="text-red-400">▸ {error}</p>
+            </div>
+          ) : filteredPosts.length > 0 ? (
+            <div className="space-y-6">
+              {filteredPosts.map((post) => (
+                <OptimizedBlogPost 
+                  key={post.id} 
+                  post={post} 
+                  onTagFilter={handleTagFilter}
+                />
+              ))}
+            </div>
+          ) : (
             <div className="text-center py-12">
               <p className="text-gray-400">▸ No posts found matching your criteria.</p>
               {searchQuery && (
@@ -379,12 +324,12 @@ export default function BlogPage() {
                 </button>
               )}
             </div>
-          ) : null}
+          )}
         </section>
 
         {/* Post Statistics */}
-        {!isLoading && (
-          <section className="py-8 text-center border-t border-purple-500/30 mt-12">
+        {!isLoading && !error && (
+          <section className="py-8 text-center border-t border-purple-500/30 mt-12" aria-label="Blog statistics">
             <div className="space-y-2">
               <p className="text-purple-300">
                 ▸ Showing {filteredPosts.length} of {posts.length} posts
