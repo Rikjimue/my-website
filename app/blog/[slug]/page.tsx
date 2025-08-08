@@ -220,6 +220,11 @@ export default function BlogPostPage() {
                     {children}
                   </h3>
                 ),
+                h4: ({ children }) => (
+                  <h4 className="text-lg font-medium text-purple-400 mt-6 mb-3">
+                    {children}
+                  </h4>
+                ),
                 
                 // Paragraphs
                 p: ({ children }) => (
