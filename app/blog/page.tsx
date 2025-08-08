@@ -1,3 +1,4 @@
+// Optimized blog page component with layout shift prevention
 "use client"
 
 import Link from "next/link"
@@ -5,6 +6,7 @@ import { Terminal, ArrowLeft, Calendar, Clock, Search, Tag, Rss } from "lucide-r
 import { useEffect, useState, useRef, useMemo } from "react"
 import dynamic from 'next/dynamic'
 
+// Lazy load heavy components
 const DecodingText = dynamic(() => import('@/components/DecodingText'), {
   loading: () => <span className="text-decoding opacity-0" style={{ minWidth: '10ch' }}>Loading...</span>,
   ssr: false
@@ -22,6 +24,7 @@ export interface BlogPost {
   published: boolean
 }
 
+// Optimized skeleton loader to prevent layout shift
 function BlogPostSkeleton() {
   return (
     <article className="border border-purple-500/30 p-6 backdrop-blur-sm bg-black/50 rounded-lg animate-pulse">
@@ -41,7 +44,8 @@ function BlogPostSkeleton() {
   )
 }
 
-function BlogPost({ post, onTagFilter }: { post: BlogPost; onTagFilter: (tag: string) => void }) {
+// Optimized blog post component
+function OptimizedBlogPost({ post, onTagFilter }: { post: BlogPost; onTagFilter: (tag: string) => void }) {
   const [isVisible, setIsVisible] = useState(false)
   const ref = useRef<HTMLElement>(null)
 
@@ -120,6 +124,7 @@ export default function OptimizedBlogPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Memoized filtered posts to prevent unnecessary re-renders
   const memoizedFilteredPosts = useMemo(() => {
     let filtered = posts
 
@@ -299,7 +304,7 @@ export default function OptimizedBlogPage() {
           ) : filteredPosts.length > 0 ? (
             <div className="space-y-6">
               {filteredPosts.map((post) => (
-                <BlogPost 
+                <OptimizedBlogPost 
                   key={post.id} 
                   post={post} 
                   onTagFilter={handleTagFilter}
