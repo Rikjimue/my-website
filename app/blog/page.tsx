@@ -1,3 +1,4 @@
+// Optimized blog page component with layout shift prevention
 "use client"
 
 import Link from "next/link"
@@ -23,6 +24,7 @@ export interface BlogPost {
   published: boolean
 }
 
+// Optimized skeleton loader to prevent layout shift
 function BlogPostSkeleton() {
   return (
     <article className="border border-purple-500/30 p-6 backdrop-blur-sm bg-black/50 rounded-lg animate-pulse">
@@ -42,7 +44,8 @@ function BlogPostSkeleton() {
   )
 }
 
-function BlogPost({ post, onTagFilter }: { post: BlogPost; onTagFilter: (tag: string) => void }) {
+// Optimized blog post component
+function OptimizedBlogPost({ post, onTagFilter }: { post: BlogPost; onTagFilter: (tag: string) => void }) {
   const [isVisible, setIsVisible] = useState(false)
   const ref = useRef<HTMLElement>(null)
 
@@ -68,7 +71,7 @@ function BlogPost({ post, onTagFilter }: { post: BlogPost; onTagFilter: (tag: st
     <article
       ref={ref}
       className={`border border-purple-500/30 p-6 hover:bg-purple-950/20 transition-colors backdrop-blur-sm bg-black/50 rounded-lg layout-stable ${
-        isVisible ? 'fade-in' : 'opacity-0'
+        isVisible ? 'fade-in-optimized' : 'opacity-0'
       }`}
       style={{ minHeight: '200px' }} // Reserve space to prevent layout shift
     >
@@ -112,7 +115,7 @@ function BlogPost({ post, onTagFilter }: { post: BlogPost; onTagFilter: (tag: st
   )
 }
 
-export default function BlogPage() {
+export default function OptimizedBlogPage() {
   const [posts, setPosts] = useState<BlogPost[]>([])
   const [allTags, setAllTags] = useState<string[]>([])
   const [filteredPosts, setFilteredPosts] = useState<BlogPost[]>([])
@@ -301,7 +304,7 @@ export default function BlogPage() {
           ) : filteredPosts.length > 0 ? (
             <div className="space-y-6">
               {filteredPosts.map((post) => (
-                <BlogPost 
+                <OptimizedBlogPost 
                   key={post.id} 
                   post={post} 
                   onTagFilter={handleTagFilter}
