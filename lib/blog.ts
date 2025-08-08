@@ -16,7 +16,6 @@ export interface BlogPost {
 
 const postsDirectory = path.join(process.cwd(), 'content/blog')
 
-// Get all blog posts with metadata
 export function getAllPosts(): BlogPost[] {
   try {
     const fileNames = fs.readdirSync(postsDirectory)
@@ -37,7 +36,7 @@ export function getAllPosts(): BlogPost[] {
           readTime: data.readTime || '5 min read',
           excerpt: data.excerpt || content.substring(0, 150) + '...',
           tags: data.tags || [],
-          published: data.published !== false, // Default to true
+          published: data.published !== false,
         } as BlogPost
       })
       .filter(post => post.published)
@@ -50,7 +49,6 @@ export function getAllPosts(): BlogPost[] {
   }
 }
 
-// Get a single blog post by slug
 export function getPostBySlug(slug: string): BlogPost | null {
   try {
     const fullPath = path.join(postsDirectory, `${slug}.md`)
@@ -74,21 +72,18 @@ export function getPostBySlug(slug: string): BlogPost | null {
   }
 }
 
-// Get all unique tags
 export function getAllTags(): string[] {
   const posts = getAllPosts()
   const tags = posts.flatMap(post => post.tags)
   return [...new Set(tags)].sort()
 }
 
-// Get posts by tag
 export function getPostsByTag(tag: string): BlogPost[] {
   return getAllPosts().filter(post => 
     post.tags.map(t => t.toLowerCase()).includes(tag.toLowerCase())
   )
 }
 
-// Search posts
 export function searchPosts(query: string): BlogPost[] {
   const posts = getAllPosts()
   const lowercaseQuery = query.toLowerCase()
@@ -101,9 +96,8 @@ export function searchPosts(query: string): BlogPost[] {
   )
 }
 
-// Generate RSS feed data
 export function generateRSSData() {
-  const posts = getAllPosts().slice(0, 10) // Latest 10 posts
+  const posts = getAllPosts().slice(0, 10)
   return {
     title: "Luke Johnson's Security Blog",
     description: "Thoughts, research, and tutorials on cybersecurity and ethical hacking",

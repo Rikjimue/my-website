@@ -4,7 +4,6 @@ import Link from "next/link"
 import { Terminal, ArrowLeft, Calendar, Clock, Search, Tag, Rss } from "lucide-react"
 import { useEffect, useState, useRef } from "react"
 
-// Word-based decoding text animation (same as homepage)
 function DecodingText({ 
   children: text, 
   className = "", 
@@ -157,11 +156,9 @@ export default function BlogPage() {
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Load blog data on component mount
   useEffect(() => {
   const loadBlogData = async () => {
     try {
-      // Fetch from API route
       const response = await fetch('/api/blog');
       const data = await response.json();
       
@@ -178,19 +175,16 @@ export default function BlogPage() {
   loadBlogData();
 }, []);
 
-  // Handle search
   const handleSearch = (query: string) => {
     setSearchQuery(query)
     filterPosts(query, selectedTag)
   }
 
-  // Handle tag filtering
   const handleTagFilter = (tag: string | null) => {
     setSelectedTag(tag)
     filterPosts(searchQuery, tag)
   }
 
-  // Filter posts based on search and tag
   const filterPosts = (search: string, tag: string | null) => {
     let filtered = posts
 

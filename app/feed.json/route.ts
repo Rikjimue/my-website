@@ -2,7 +2,7 @@ import { getAllPosts } from '@/lib/blog'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const posts = getAllPosts().slice(0, 20) // Latest 20 posts
+  const posts = getAllPosts().slice(0, 20)
   const siteUrl = 'https://rikjimue.com'
   
   const jsonFeed = {
@@ -20,7 +20,7 @@ export async function GET() {
     items: posts.map(post => ({
       id: `${siteUrl}/blog/${post.slug}`,
       title: post.title,
-      content_html: post.content.replace(/\n/g, '<br>'), // Basic conversion
+      content_html: post.content.replace(/\n/g, '<br>'),
       summary: post.excerpt,
       url: `${siteUrl}/blog/${post.slug}`,
       date_published: new Date(post.date).toISOString(),

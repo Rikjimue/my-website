@@ -14,7 +14,6 @@ interface BlogPost {
   published: boolean
 }
 
-// Enhanced word-based decoding text animation with proper wrapping
 function DecodingText({ 
   children: text, 
   className = "", 
@@ -45,10 +44,7 @@ function DecodingText({
   }
 
   useEffect(() => {
-    // Split text into words while preserving spaces
     const words = text.split(/(\s+)/)
-    
-    // Initialize word structures
     const initialWords = words.map(word => ({
       word,
       chars: word.split('').map(() => getRandomChar()),
@@ -60,7 +56,6 @@ function DecodingText({
     const timer = setTimeout(() => {
       setIsVisible(true)
       
-      // Set random resolve times for each word
       wordResolveTimes.current = words.map((_, i) => {
         const baseTime = (i / words.length) * ANIMATION_DURATION_MS * 0.8
         const randomVariation = Math.random() * ANIMATION_DURATION_MS * 0.4
@@ -74,7 +69,6 @@ function DecodingText({
         const elapsed = performance.now() - (startTimeRef.current || 0)
 
         if (elapsed >= ANIMATION_DURATION_MS) {
-          // Animation finished - show final text
           setDisplayWords(words.map(word => ({
             word,
             chars: word.split(''),
@@ -162,7 +156,6 @@ function DecodingText({
   )
 }
 
-// Animation coordinator component
 function AnimatedSection({ 
   children, 
   delay = 0, 
@@ -256,12 +249,10 @@ export default function HomePage() {
   }
 }
   
-  // Track when all hero animations are complete
   const handleAnimationComplete = useCallback(() => {
     setCompletedAnimations(prev => {
       const newCount = prev + 1
-      // When we have completed the main hero animations (adjust this number based on your needs)
-      if (newCount >= 6) { // Adjust based on number of main DecodingText elements in hero
+      if (newCount >= 6) {
         setTimeout(() => setHeroAnimationComplete(true), 500)
       }
       return newCount
@@ -288,7 +279,6 @@ useEffect(() => {
       }
     }
 
-    // Only load after hero animation is complete to avoid blocking
     if (heroAnimationComplete) {
       loadPosts()
     }

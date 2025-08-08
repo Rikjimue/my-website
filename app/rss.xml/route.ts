@@ -2,7 +2,7 @@ import { getAllPosts } from '@/lib/blog'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const posts = getAllPosts().slice(0, 20) // Latest 20 posts
+  const posts = getAllPosts().slice(0, 20)
   const siteUrl = 'https://rikjimue.com'
   
   const rssXml = `<?xml version="1.0" encoding="UTF-8"?>

@@ -20,7 +20,6 @@ const structuredData = {
   ]
 }
 
-// Separate viewport export (this fixes the warning)
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
