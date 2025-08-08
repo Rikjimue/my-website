@@ -6,7 +6,7 @@ date: "2025-08-04"
 
 readTime: "10 min read"
 
-excerpt: ""
+excerpt: "Building my homelab started with the most crucial decision: choosing the right hardware. In this post, I'll walk through my initial planning process, my thought process in picking out components, and the troubles I faced getting everything set up."
 
 tags: ["Blog", "Homelab", "Proxmox"]
 
