@@ -132,7 +132,16 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       </head>
-      <body className={jetbrainsMono.className}>{children}</body>
+      <body className={jetbrainsMono.className}>
+        {/* Skip to main content link for screen readers */}
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-purple-600 text-white px-4 py-2 rounded z-50"
+        >
+          Skip to main content
+        </a>
+        {children}
+      </body>
     </html>
   )
 }

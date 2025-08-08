@@ -7,11 +7,13 @@ import { useEffect, useState, useRef } from "react"
 function DecodingText({ 
   children: text, 
   className = "", 
-  delay = 0 
+  delay = 0, 
+  onComplete 
 }: { 
   children: string; 
   className?: string; 
   delay?: number;
+  onComplete?: () => void;
 }) {
   const [displayWords, setDisplayWords] = useState<Array<{ word: string; chars: string[]; resolved: boolean }>>([])
   const [isGlitching, setIsGlitching] = useState(false)
@@ -38,10 +40,12 @@ function DecodingText({
       chars: word.split('').map(() => getRandomChar()),
       resolved: false
     }))
+    
     setDisplayWords(initialWords)
 
     const timer = setTimeout(() => {
       setIsVisible(true)
+      
       wordResolveTimes.current = words.map((_, i) => {
         const baseTime = (i / words.length) * ANIMATION_DURATION_MS * 0.8
         const randomVariation = Math.random() * ANIMATION_DURATION_MS * 0.4
@@ -64,10 +68,14 @@ function DecodingText({
           if (animationFrameId.current) {
             cancelAnimationFrame(animationFrameId.current)
           }
+          setTimeout(() => {
+            onComplete?.()
+          }, 100)
           return
         }
 
         frameCount++
+
         if (Math.random() < GLITCH_CHANCE) {
           setIsGlitching(true)
           setTimeout(() => setIsGlitching(false), 100)
@@ -108,7 +116,7 @@ function DecodingText({
         cancelAnimationFrame(animationFrameId.current)
       }
     }
-  }, [text, delay])
+  }, [text, delay, onComplete])
 
   return (
     <span 
@@ -118,15 +126,23 @@ function DecodingText({
       style={{ 
         wordBreak: 'break-word', 
         overflowWrap: 'anywhere',
-        lineHeight: '1.5'
+        lineHeight: '1.5',
+        // CRITICAL FIX: Reserve space to prevent layout shift
+        minHeight: '1.5em',
+        fontFamily: 'monospace', // Ensure consistent character width
+        letterSpacing: '0', // Prevent character spacing changes
       }}
+      // ACCESSIBILITY FIX: Add aria-label for screen readers
+      aria-label={text}
+      aria-live="polite"
     >
       {displayWords.map((wordObj, wordIndex) => (
         <span 
           key={wordIndex}
-          className="inline"
+          className="inline-block" // Change to inline-block for better control
           style={{
-            textShadow: isGlitching && !wordObj.resolved ? '2px 0 #ff0000, -2px 0 #00ffff' : 'none'
+            textShadow: isGlitching && !wordObj.resolved ? '2px 0 #ff0000, -2px 0 #00ffff' : 'none',
+            minWidth: wordObj.word.length * 0.6 + 'em', // Reserve space based on final word length
           }}
         >
           {wordObj.chars.join('')}
@@ -251,7 +267,11 @@ export default function BlogPage() {
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
               className="w-full bg-black border border-purple-500/30 text-white pl-10 pr-4 py-2 rounded focus:border-purple-400 focus:outline-none"
+              aria-describedby="search-help"
             />
+            <div id="search-help" className="sr-only">
+              Search through blog post titles, content, and tags
+            </div>
           </div>
 
           {/* Tag Filters */}
@@ -289,6 +309,7 @@ export default function BlogPage() {
             rel="noopener noreferrer"
             className="flex items-center gap-2 text-purple-300 hover:text-white transition-colors text-sm"
             title="Subscribe to RSS feed"
+            aria-label="Subscribe to RSS feed (opens in new tab)"
           >
             <Rss className="w-4 h-4" />
             <span>RSS Feed</span>
@@ -336,6 +357,7 @@ export default function BlogPage() {
                         key={tag}
                         onClick={() => handleTagFilter(tag)}
                         className="text-xs px-2 py-1 border border-purple-600/50 text-purple-300 hover:border-purple-400 transition-colors"
+                        aria-label={`Filter posts by ${tag} tag`}
                       >
                         #{tag}
                       </button>
@@ -351,6 +373,7 @@ export default function BlogPage() {
                 <button
                   onClick={() => handleSearch("")}
                   className="mt-2 text-purple-300 hover:text-white transition-colors"
+                  aria-label="Clear search query"
                 >
                   Clear search
                 </button>
