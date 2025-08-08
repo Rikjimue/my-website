@@ -63,4 +63,5 @@ The next post will be about building the server hardware and the initial Proxmox
 Thanks for checking out the site. Let’s see what we can build.
 
 ---
+&#x200B;
 *This site is hosted on my homelab server. All the configuration files and setup details will be shared as I write about each project. If you’re curious about anything specific, just ask.*
