@@ -1,11 +1,14 @@
 "use client"
 
+import React from "react"
 import Link from "next/link"
 import { Terminal, ArrowLeft, Calendar, Clock, Tag } from "lucide-react"
-import { useEffect, useState, useRef, JSX } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useParams } from "next/navigation"
+import ReactMarkdown from "react-markdown"
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter"
+import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism"
 
-// Synchronized decoding text animation component
 function DecodingText({ 
   children: text, 
   className = "", 
@@ -156,13 +159,10 @@ export default function BlogPostPage() {
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
-  // Add navigation state
   const [allPosts, setAllPosts] = useState<BlogPost[]>([])
   const [previousPost, setPreviousPost] = useState<BlogPost | null>(null)
   const [nextPost, setNextPost] = useState<BlogPost | null>(null)
 
-  // Updated function to fetch blog post and navigation data
   const fetchBlogPostAndNavigation = async (slug: string) => {
     try {
       const response = await fetch('/api/blog')
@@ -177,17 +177,13 @@ export default function BlogPostPage() {
         const posts = data.posts
         setAllPosts(posts)
         
-        // Find current post
         const currentPostIndex = posts.findIndex((post: BlogPost) => post.slug === slug)
         
         if (currentPostIndex === -1) {
           return null
         }
         
-        const currentPost = posts[currentPostIndex]
-        
-        // Find previous and next posts (based on chronological order)
-        // Previous = older post (higher index), Next = newer post (lower index)  
+        const currentPost = posts[currentPostIndex] 
         const prevPost = currentPostIndex < posts.length - 1 ? posts[currentPostIndex + 1] : null
         const nextPostData = currentPostIndex > 0 ? posts[currentPostIndex - 1] : null
         
@@ -235,138 +231,6 @@ export default function BlogPostPage() {
 
     loadPost()
   }, [params])
-
-  // Render content with proper formatting
-  const renderContent = (content: string) => {
-    const lines = content.split("\n")
-    const result: JSX.Element[] = []
-    let inCodeBlock = false
-    let codeBlockLanguage = ""
-    let codeBlockContent: string[] = []
-
-    lines.forEach((line, index) => {
-      // Handle code blocks
-      if (line.startsWith("```")) {
-        if (inCodeBlock) {
-          // End of code block
-          result.push(
-            <div key={`code-${index}`} className="bg-gray-900 border border-purple-500/30 p-4 rounded font-mono text-sm mt-4 mb-4 overflow-x-auto">
-              {codeBlockLanguage && (
-                <div className="text-purple-400 text-xs mb-2 border-b border-purple-500/20 pb-1">
-                  {codeBlockLanguage}
-                </div>
-              )}
-              <pre className="text-purple-300">
-                <code>{codeBlockContent.join('\n')}</code>
-              </pre>
-            </div>
-          )
-          inCodeBlock = false
-          codeBlockLanguage = ""
-          codeBlockContent = []
-        } else {
-          // Start of code block
-          inCodeBlock = true
-          codeBlockLanguage = line.replace(/```/, "").trim()
-        }
-        return
-      }
-
-      // If we're inside a code block, collect the content
-      if (inCodeBlock) {
-        codeBlockContent.push(line)
-        return
-      }
-
-      // Handle different markdown elements
-      if (line.trim() === "") {
-        // Empty line - add space
-        result.push(<div key={`space-${index}`} className="h-2"></div>)
-      } else if (line.startsWith("# ")) {
-        // H1 - Main title
-        result.push(
-          <h1 key={index} className="text-3xl font-bold text-white mt-8 mb-6 border-l-4 border-purple-600 pl-4">
-            {line.substring(2)}
-          </h1>
-        )
-      } else if (line.startsWith("## ")) {
-        // H2 - Section headers
-        result.push(
-          <h2 key={index} className="text-2xl font-bold text-white mt-8 mb-4 border-l-2 border-purple-600 pl-4">
-            {line.substring(3)}
-          </h2>
-        )
-      } else if (line.startsWith("### ")) {
-        // H3 - Subsection headers
-        result.push(
-          <h3 key={index} className="text-xl font-semibold text-purple-300 mt-6 mb-3">
-            {line.substring(4)}
-          </h3>
-        )
-      } else if (line.startsWith("#### ")) {
-        // H4 - Sub-subsection headers
-        result.push(
-          <h4 key={index} className="text-lg font-semibold text-purple-400 mt-4 mb-2">
-            {line.substring(5)}
-          </h4>
-        )
-      } else if (line.trim().startsWith("* ") || line.trim().startsWith("- ")) {
-        // Bullet points
-        const content = line.trim().substring(2)
-        result.push(
-          <div key={index} className="flex gap-2 my-2 text-gray-300">
-            <span className="text-purple-400 flex-shrink-0 mt-0.5">▸</span>
-            <span className="break-words min-w-0">{content}</span>
-          </div>
-        )
-      } else if (line.trim().match(/^\d+\./)) {
-        // Numbered lists
-        const content = line.trim().substring(line.indexOf(".") + 1).trim()
-        result.push(
-          <div key={index} className="flex gap-2 my-2 text-gray-300">
-            <span className="text-purple-400 flex-shrink-0 mt-0.5">
-              {line.trim().split('.')[0]}.
-            </span>
-            <span className="break-words min-w-0">{content}</span>
-          </div>
-        )
-      } else if (line.trim().startsWith("> ")) {
-        // Blockquotes
-        result.push(
-          <blockquote key={index} className="border-l-4 border-purple-600 pl-4 italic text-purple-300 my-4">
-            {line.substring(2)}
-          </blockquote>
-        )
-      } else if (line.trim() && !line.startsWith("---")) {
-        // Regular paragraphs
-        // Handle inline code with backticks
-        const processInlineCode = (text: string) => {
-          const parts = text.split('`')
-          return parts.map((part, partIndex) => {
-            if (partIndex % 2 === 1) {
-              // This is code
-              return (
-                <code key={partIndex} className="bg-gray-900 border border-purple-500/30 px-2 py-1 rounded text-purple-300 font-mono text-sm">
-                  {part}
-                </code>
-              )
-            } else {
-              // This is regular text
-              return <span key={partIndex}>{part}</span>
-            }
-          })
-        }
-
-        result.push(
-          <p key={index} className="leading-relaxed my-4 text-gray-300">
-            {line.includes('`') ? processInlineCode(line) : line}
-          </p>
-        )
-      }
-    })
-
-    return result.filter(Boolean)
-  }
 
   if (loading) {
     return (
@@ -467,24 +331,152 @@ export default function BlogPostPage() {
             </div>
           </header>
 
-          {/* Article Content */}
+          {/* ReactMarkdown converter */}
           <div className="prose prose-invert max-w-none">
-            <div className="space-y-6 text-gray-300">
-              {renderContent(post.content)}
-            </div>
+            <ReactMarkdown
+              components={{
+                // Headings
+                h1: ({ children }) => (
+                  <h1 className="text-3xl font-bold text-white mt-8 mb-6 border-l-4 border-purple-600 pl-4">
+                    {children}
+                  </h1>
+                ),
+                h2: ({ children }) => (
+                  <h2 className="text-2xl font-bold text-white mt-8 mb-4 border-l-2 border-purple-600 pl-4">
+                    {children}
+                  </h2>
+                ),
+                h3: ({ children }) => (
+                  <h3 className="text-xl font-semibold text-purple-300 mt-6 mb-3">
+                    {children}
+                  </h3>
+                ),
+                
+                // Paragraphs
+                p: ({ children }) => (
+                  <p className="text-gray-300 leading-relaxed mb-4 whitespace-pre-line">
+                    {children}
+                  </p>
+                ),
+                
+                // Lists
+                ul: ({ children }) => (
+                  <ul className="list-disc list-inside text-gray-300 mb-4 space-y-1 ml-6">
+                    {children}
+                  </ul>
+                ),
+                ol: ({ children, start }: any) => (
+                  <ol className="list-decimal list-inside text-gray-300 mb-4 space-y-1 ml-6" start={start}>
+                    {children}
+                  </ol>
+                ),
+                li: ({ children }) => (
+                  <li className="text-gray-300 leading-relaxed">
+                    {children}
+                  </li>
+                ),
+                
+                // Pre blocks - prevent double rendering of code blocks
+                pre: ({ children }: any) => {
+                  // If the pre contains a code element with a language class, 
+                  // just return the children (let the code component handle it)
+                  const child = children?.props;
+                  if (child && child.className && child.className.includes('language-')) {
+                    return <>{children}</>;
+                  }
+                  
+                  // Otherwise render as a regular pre block
+                  return (
+                    <pre className="bg-gray-900 border border-purple-500/30 rounded-lg p-4 font-mono text-sm text-purple-300 overflow-x-auto my-4">
+                      {children}
+                    </pre>
+                  );
+                },
+                
+                // Code blocks and inline code
+                code: ({ className, children }: any) => {
+                  const match = /language-(\w+)/.exec(className || '')
+                  if (match) {
+                    return (
+                      <div className="my-6 rounded-lg overflow-hidden bg-gray-900 border border-purple-500/30">
+                        <div className="bg-gray-800 px-4 py-2 text-purple-400 text-xs font-mono border-b border-purple-500/20">
+                          {match[1]}
+                        </div>
+                        <SyntaxHighlighter
+                          style={oneDark}
+                          language={match[1]}
+                          PreTag="div"
+                          codeTagProps={{
+                            style: {
+                              background: '#111827 !important',
+                              backgroundColor: '#111827 !important'
+                            }
+                          }}
+                          customStyle={{
+                            margin: 0,
+                            padding: '1.5rem',
+                            backgroundColor: '#111827',
+                            background: '#111827'
+                          }}
+                        >
+                          {String(children).replace(/\n$/, '')}
+                        </SyntaxHighlighter>
+                      </div>
+                    )
+                  }
+                  return (
+                    <code className="bg-gray-800 text-purple-300 px-2 py-1 rounded font-mono text-sm">
+                      {children}
+                    </code>
+                  )
+                },
+                
+                // Blockquotes
+                blockquote: ({ children }) => (
+                  <blockquote className="border-l-4 border-purple-600 pl-4 italic text-purple-300 my-6">
+                    {children}
+                  </blockquote>
+                ),
+                
+                // Links
+                a: ({ href, children }) => (
+                  <a 
+                    href={href}
+                    className="text-purple-400 hover:text-purple-300 underline transition-colors"
+                    target={href?.startsWith('http') ? '_blank' : undefined}
+                    rel={href?.startsWith('http') ? 'noopener noreferrer' : undefined}
+                  >
+                    {children}
+                  </a>
+                ),
+                
+                // Strong and em
+                strong: ({ children }) => (
+                  <strong className="text-white font-semibold">{children}</strong>
+                ),
+                em: ({ children }) => (
+                  <em className="text-purple-300 italic">{children}</em>
+                ),
+                
+                // Line breaks
+                br: () => <br className="block" />,
+              }}
+            >
+              {post.content}
+            </ReactMarkdown>
           </div>
 
-          {/* Article Footer with Working Navigation */}
+          {/* Article Footer with Navigation */}
           <footer className="mt-12 pt-8 border-t border-purple-500/30">
             <div className="space-y-6">
-              {/* Social sharing or other content */}
+              {/* Social sharing */}
               <div className="text-purple-300 text-center">
                 <p>▸ Found this helpful? Share it with others.</p>
               </div>
               
               {/* Navigation between posts */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Previous Post (Older) */}
+                {/* Previous Post */}
                 <div className="text-left">
                   {previousPost ? (
                     <Link 
@@ -513,7 +505,7 @@ export default function BlogPostPage() {
                   )}
                 </div>
 
-                {/* Next Post (Newer) */}
+                {/* Next Post */}
                 <div className="text-right">
                   {nextPost ? (
                     <Link 
